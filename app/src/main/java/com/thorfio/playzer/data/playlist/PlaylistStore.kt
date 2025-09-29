@@ -153,4 +153,17 @@ class PlaylistStore(private val context: Context) {
         }
         persistAsync()
     }
+
+    fun updateTrackOrder(playlistId: String, newTrackOrder: List<String>) {
+        _playlists.value = _playlists.value.map { pl ->
+            if (pl.id == playlistId) {
+                pl.copy(trackIds = newTrackOrder, lastUpdated = Instant.now().toEpochMilli())
+            } else pl
+        }
+        persistAsync()
+    }
+
+    fun getTrackIds(playlistId: String): List<String> {
+        return _playlists.value.firstOrNull { it.id == playlistId }?.trackIds ?: emptyList()
+    }
 }

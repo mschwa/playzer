@@ -1,14 +1,18 @@
 package com.thorfio.playzer.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -27,7 +31,19 @@ import com.thorfio.playzer.ui.navigation.RouteBuilder
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.theme.Charcoal
 import com.thorfio.playzer.ui.theme.DarkGrey
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.coroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +71,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                 actions = {
                     if (playlist != null) {
                         IconButton(onClick = { showRename = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Rename") }
-                        IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Default.Delete, contentDescription = "Delete Playlist") }
+                        IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Filled.Delete, contentDescription = "Delete Playlist") }
                     }
                 }
             )
@@ -170,6 +186,7 @@ private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TrackListingForPlaylist(
     playlistId: String,
@@ -180,35 +197,273 @@ private fun TrackListingForPlaylist(
 ) {
     var menuForTrackId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val playlistStore = ServiceLocator.playlistStore
 
-    LazyColumn(Modifier.fillMaxSize(), state = listState) {
-        itemsIndexed(tracks, key = { _, t -> t.id }) { index, t ->
+    // Mutable state to track dragging operations
+    var isDragging by remember { mutableStateOf(false) }
+    var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
+    var currentDropIndex by remember { mutableStateOf<Int?>(null) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    // Track ordering state
+    var trackOrder by remember(tracks) { mutableStateOf(tracks) }
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        state = listState
+    ) {
+        itemsIndexed(
+            items = trackOrder,
+            key = { _, item -> item.id }
+        ) { index, track ->
+            val isBeingDragged = index == draggedItemIndex
             val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
+            val rowModifier = Modifier
+                .animateItem()
+                .fillMaxWidth()
+                .background(rowColor)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .then(
+                    if (isBeingDragged) {
+                        Modifier
+                            .graphicsLayer {
+                                alpha = 0.9f
+                                scaleX = 1.05f
+                                scaleY = 1.05f
+                                shadowElevation = 8f
+                                translationY = offsetY
+                            }
+                            .zIndex(1f)
+                    } else if (currentDropIndex == index && isDragging) {
+                        // Create space for the target drop position
+                        Modifier
+                            .padding(top = 32.dp)
+                            .zIndex(0f)
+                    } else {
+                        Modifier.zIndex(0f)
+                    }
+                )
+
             Row(
-                Modifier
-                    .fillMaxWidth()
-                    .background(rowColor)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = rowModifier,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TrackAlbumArt(track = t, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
+                // Drag handle - this will be used to initiate drags
+                Icon(
+                    imageVector = Icons.Default.DragHandle,
+                    contentDescription = "Drag to reorder",
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .pointerInput(track.id) {
+                            detectDragGestures(
+                                onDragStart = {
+                                    isDragging = true
+                                    draggedItemIndex = index
+                                },
+                                onDragEnd = {
+                                    // Apply the reordering when drag ends
+                                    if (draggedItemIndex != null && currentDropIndex != null &&
+                                        draggedItemIndex != currentDropIndex &&
+                                        draggedItemIndex!! < trackOrder.size &&
+                                        currentDropIndex!! < trackOrder.size) {
+
+                                        val draggedItem = trackOrder[draggedItemIndex!!]
+                                        val newList = trackOrder.toMutableList()
+                                        newList.removeAt(draggedItemIndex!!)
+                                        newList.add(currentDropIndex!!, draggedItem)
+                                        trackOrder = newList
+
+                                        // Update the playlist store with the new order
+                                        scope.launch {
+                                            val trackIds = newList.map { it.id }
+                                            playlistStore.updateTrackOrder(playlistId, trackIds)
+                                        }
+                                    }
+
+                                    // Reset drag state
+                                    isDragging = false
+                                    draggedItemIndex = null
+                                    currentDropIndex = null
+                                    offsetY = 0f
+                                },
+                                onDragCancel = {
+                                    isDragging = false
+                                    draggedItemIndex = null
+                                    currentDropIndex = null
+                                    offsetY = 0f
+                                },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+
+                                    // Update vertical offset for visual feedback
+                                    offsetY += dragAmount.y
+
+                                    // Determine potential drop position based on drag direction and current scroll position
+                                    if (draggedItemIndex != null) {
+                                        val draggedIdx = draggedItemIndex!!
+
+                                        // Calculate which index we're hovering over
+                                        val visibleItems = listState.layoutInfo.visibleItemsInfo
+                                        val dragPosition = change.position.y + listState.firstVisibleItemScrollOffset
+
+                                        // Find the item we're dragging over
+                                        for (item in visibleItems) {
+                                            if (dragPosition > item.offset && dragPosition < item.offset + item.size) {
+                                                if (item.index != draggedIdx && item.index != currentDropIndex) {
+                                                    currentDropIndex = item.index
+                                                }
+                                                break
+                                            }
+                                        }
+
+                                        // Auto-scroll when near edges
+                                        val sensitivity = 50
+                                        when {
+                                            change.position.y < sensitivity -> {
+                                                // Scroll up
+                                                scope.launch {
+                                                    listState.scrollBy(-20f)
+                                                }
+                                            }
+                                            change.position.y > this.size.height - sensitivity -> {
+                                                // Scroll down
+                                                scope.launch {
+                                                    listState.scrollBy(20f)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                )
+
+                TrackAlbumArt(track = track, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(t.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(t.artistName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artistName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { onPlay(index) }) { Icon(Icons.Filled.PlayArrow, contentDescription = "Play") }
-                IconButton(onClick = { menuForTrackId = t.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Track Options") }
-                DropdownMenu(expanded = menuForTrackId == t.id, onDismissRequest = { menuForTrackId = null }) {
+                IconButton(onClick = { menuForTrackId = track.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Track Options") }
+                DropdownMenu(expanded = menuForTrackId == track.id, onDismissRequest = { menuForTrackId = null }) {
                     DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(index); menuForTrackId = null })
                     DropdownMenuItem(text = { Text("Add to Playlist") }, onClick = {
-                        nav.navigate(RouteBuilder.addToPlaylist(listOf(t.id)))
+                        nav.navigate(RouteBuilder.addToPlaylist(listOf(track.id)))
                         menuForTrackId = null
                     })
-                    DropdownMenuItem(text = { Text("Remove") }, onClick = { onRemove(t.id); menuForTrackId = null })
+                    DropdownMenuItem(text = { Text("Remove") }, onClick = { onRemove(track.id); menuForTrackId = null })
                 }
             }
             HorizontalDivider()
         }
         item { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+data class DragInfo(
+    val trackId: String,
+    val currentIndex: Int,
+    val isDragging: Boolean = false
+)
+
+private fun Modifier.dragTarget(
+    trackId: String,
+    currentIndex: Int,
+    dragState: MutableState<DragInfo?>,
+    playlistId: String,
+    onDragFinished: (fromIndex: Int, toIndex: Int) -> Unit
+) = composed {
+    val isDragging = dragState.value?.trackId == trackId
+    val elevation by animateFloatAsState(if (isDragging) 8f else 0f, label = "elevation")
+    val scale by animateFloatAsState(if (isDragging) 1.1f else 1.0f, label = "scale")
+    val alpha by animateFloatAsState(if (isDragging) 0.9f else 1f, label = "alpha")
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        }
+        .zIndex(if (isDragging) 1f else 0f)
+        .pointerInput(Unit) {
+            detectDragGestures(
+                onDragStart = {
+                    dragState.value = DragInfo(trackId, currentIndex, true)
+                },
+                onDragEnd = {
+                    val fromIndex = dragState.value?.currentIndex ?: return@detectDragGestures
+                    val toIndex = dragState.value?.currentIndex ?: return@detectDragGestures
+                    if (fromIndex != toIndex) {
+                        onDragFinished(fromIndex, toIndex)
+                    }
+                    dragState.value = null
+                },
+                onDragCancel = {
+                    dragState.value = null
+                },
+                onDrag = { change, _ ->
+                    change.consume()
+                }
+            )
+        }
+}
+
+private fun Modifier.dragContainer(
+    currentIndex: Int,
+    dragState: MutableState<DragInfo?>,
+    listState: LazyListState,
+    scope: CoroutineScope
+) = composed {
+    this.pointerInput(currentIndex) {
+        detectDragGestures(
+            onDrag = { change, dragAmount ->
+                change.consume()
+                val dragInfo = dragState.value ?: return@detectDragGestures
+
+                // Auto-scroll when near edges
+                val scrollThreshold = 50f
+                when {
+                    change.position.y < scrollThreshold -> scope.launch {
+                        listState.scrollBy(-10f)
+                    }
+                    change.position.y > size.height - scrollThreshold -> scope.launch {
+                        listState.scrollBy(10f)
+                    }
+                }
+
+                // Update current position and reorder if needed
+                val yChange = dragAmount.y
+                if (yChange > 8 && currentIndex < dragInfo.currentIndex) {
+                    // Moving down
+                    dragState.value = dragInfo.copy(currentIndex = currentIndex)
+                } else if (yChange < -8 && currentIndex > dragInfo.currentIndex) {
+                    // Moving up
+                    dragState.value = dragInfo.copy(currentIndex = currentIndex)
+                }
+            },
+            onDragStart = { },
+            onDragEnd = { },
+            onDragCancel = { }
+        )
+    }
+}
+
+suspend fun PointerInputScope.detectImmediateDrag(
+    onDragStart: (Offset) -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onDragCancel: () -> Unit = {},
+    onDrag: (change: PointerInputChange, dragAmount: Offset) -> Unit = { _, _ -> }
+) = coroutineScope {
+    awaitPointerEventScope {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        onDragStart(down.position)
+
+        drag(down.id) { change ->
+            onDrag(change, change.positionChange())
+            change.consume()
+        }
+
+        onDragEnd()
     }
 }
