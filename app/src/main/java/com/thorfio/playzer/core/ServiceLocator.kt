@@ -3,6 +3,7 @@ package com.thorfio.playzer.core
 import android.content.Context
 import com.thorfio.playzer.data.player.PlaybackController
 import com.thorfio.playzer.data.playlist.PlaylistStore
+import com.thorfio.playzer.data.prefs.AppPreferencesRepository
 import com.thorfio.playzer.data.queue.InternalQueue
 import com.thorfio.playzer.data.repo.MusicRepository
 import com.thorfio.playzer.data.prefs.ThemePreferencesRepository
@@ -17,6 +18,7 @@ object ServiceLocator {
     val internalQueue: InternalQueue by lazy { InternalQueue() }
     val playbackController: PlaybackController by lazy { PlaybackController(appContext, musicRepository, internalQueue) }
     val themePreferences: ThemePreferencesRepository by lazy { ThemePreferencesRepository(appContext) }
+    val appPreferencesRepository: AppPreferencesRepository by lazy { AppPreferencesRepository(appContext) }
 
     fun init(context: Context) {
         appContext = context.applicationContext

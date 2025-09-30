@@ -1,5 +1,6 @@
 package com.thorfio.playzer.data.repo
 
+import android.util.Log
 import com.thorfio.playzer.data.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -7,8 +8,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.util.UUID
 
-/** In-memory placeholder repository. A future implementation would scan device storage. */
+/** Repository managing music library data. */
 class MusicRepository {
+    companion object {
+        private const val TAG = "MusicRepository"
+    }
+
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
     val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
 
@@ -18,10 +23,13 @@ class MusicRepository {
     private val _artists = MutableStateFlow<List<Artist>>(emptyList())
     val artists: StateFlow<List<Artist>> = _artists.asStateFlow()
 
-    init { seedSample() }
+    // Track whether we've loaded data - either from sample or from scanning
+    private var hasLoadedData = false
 
-    private fun seedSample() {
-        if (_tracks.value.isNotEmpty()) return
+    init { seedSampleIfNeeded() }
+
+    private fun seedSampleIfNeeded() {
+        if (hasLoadedData || _tracks.value.isNotEmpty()) return
         val artistA = Artist(id = UUID.randomUUID().toString(), name = "Aria Nova", albumIds = emptyList(), trackIds = emptyList())
         val artistB = Artist(id = UUID.randomUUID().toString(), name = "Echo Drift", albumIds = emptyList(), trackIds = emptyList())
         val albumA = Album(id = UUID.randomUUID().toString(), title = "Midnight Waves", artistId = artistA.id, artistName = artistA.name, trackIds = emptyList(), coverTrackId = null)
@@ -39,6 +47,8 @@ class MusicRepository {
         _tracks.value = sampleTracks
         _albums.value = listOf(updatedAlbumA, updatedAlbumB)
         _artists.value = listOf(updatedArtistA, updatedArtistB)
+        hasLoadedData = true
+        Log.d(TAG, "Seeded sample data: ${sampleTracks.size} tracks")
     }
 
     fun tracksByIds(ids: List<String>) = _tracks.value.filter { it.id in ids }
@@ -86,5 +96,110 @@ class MusicRepository {
             val added = toAdd.filter { it.artistId == ar.id }.map { it.id }
             if (added.isEmpty()) ar else ar.copy(trackIds = (ar.trackIds + added).distinct())
         }
+    }
+
+    /**
+     * Updates the entire library with data from scanned files
+     */
+    fun updateLibrary(newTracks: List<Track>, newAlbums: List<Album>, newArtists: List<Artist>) {
+        // Only replace the sample data if we have actual files
+        if (newTracks.isEmpty()) {
+            Log.d(TAG, "No new tracks to update")
+            return
+        }
+
+        Log.d(TAG, "Updating library with ${newTracks.size} tracks, ${newAlbums.size} albums, ${newArtists.size} artists")
+
+        // If we previously had sample data only, replace everything
+        if (_tracks.value.all { it.fileUri.startsWith("sample://") }) {
+            Log.d(TAG, "Replacing sample data with real tracks")
+            _tracks.value = newTracks
+            _albums.value = newAlbums
+            _artists.value = newArtists
+            hasLoadedData = true
+            return
+        }
+
+        // Otherwise, merge with existing real data
+        val existingRealTracks = _tracks.value.filter { !it.fileUri.startsWith("sample://") }
+        val existingTrackIds = existingRealTracks.map { it.id }.toSet()
+
+        Log.d(TAG, "Merging with existing data. Current real tracks: ${existingRealTracks.size}")
+
+        // Add new tracks that don't exist yet
+        val tracksToAdd = newTracks.filter { it.id !in existingTrackIds }
+        Log.d(TAG, "Adding ${tracksToAdd.size} new tracks")
+
+        // Important: Store the updated tracks
+        _tracks.value = existingRealTracks + tracksToAdd
+
+        // Update albums
+        val existingAlbumIds = _albums.value
+            .filter { album -> album.trackIds.any { trackId ->
+                _tracks.value.find { it.id == trackId }?.fileUri?.startsWith("sample://") == false
+            }}
+            .map { it.id }.toSet()
+
+        val albumsToAdd = newAlbums.filter { it.id !in existingAlbumIds }
+        Log.d(TAG, "Adding ${albumsToAdd.size} new albums")
+
+        _albums.value = _albums.value
+            .filter { it.id in existingAlbumIds }
+            .map { album ->
+                // Find new tracks for this album
+                val newTrackIdsForAlbum = newTracks
+                    .filter { it.albumId == album.id }
+                    .map { it.id }
+
+                // Update track IDs and cover if needed
+                album.copy(
+                    trackIds = (album.trackIds + newTrackIdsForAlbum).distinct(),
+                    coverTrackId = album.coverTrackId ?: newTrackIdsForAlbum.firstOrNull()
+                )
+            } + albumsToAdd
+
+        // Update artists
+        val existingArtistIds = _artists.value
+            .filter { artist -> artist.trackIds.any { trackId ->
+                _tracks.value.find { it.id == trackId }?.fileUri?.startsWith("sample://") == false
+            }}
+            .map { it.id }.toSet()
+
+        val artistsToAdd = newArtists.filter { it.id !in existingArtistIds }
+        Log.d(TAG, "Adding ${artistsToAdd.size} new artists")
+
+        _artists.value = _artists.value
+            .filter { it.id in existingArtistIds }
+            .map { artist ->
+                // Find new tracks for this artist
+                val newTrackIdsForArtist = newTracks
+                    .filter { it.artistId == artist.id }
+                    .map { it.id }
+
+                // Find new albums for this artist
+                val newAlbumIdsForArtist = newAlbums
+                    .filter { it.artistId == artist.id }
+                    .map { it.id }
+
+                // Update IDs
+                artist.copy(
+                    trackIds = (artist.trackIds + newTrackIdsForArtist).distinct(),
+                    albumIds = (artist.albumIds + newAlbumIdsForArtist).distinct()
+                )
+            } + artistsToAdd
+
+        Log.d(TAG, "Library update complete. Total tracks: ${_tracks.value.size}")
+        hasLoadedData = true
+    }
+
+    /**
+     * Forces a notification that data has changed to trigger UI updates
+     */
+    fun notifyDataChanged() {
+        Log.d(TAG, "Forcing data change notification")
+        // Re-emit the current values to trigger observers
+        _tracks.value = _tracks.value
+        _albums.value = _albums.value
+        _artists.value = _artists.value
     }
 }

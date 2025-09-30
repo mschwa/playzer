@@ -432,22 +432,64 @@ private fun TrackList(
     onAddToPlaylist: (Track) -> Unit,
     onDelete: (Track) -> Unit,
     rowHeight: Dp,
-    sortControls: (@Composable () -> Unit)? = null
+    sortControls: @Composable () -> Unit
 ) {
-    val selectBg = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
     var menuForTrackId by remember { mutableStateOf<String?>(null) }
+
     LazyColumn(Modifier.fillMaxSize()) {
-        stickyHeader {
-            Column {
-                if (sortControls != null) sortControls()
+        // Add debug info at the top
+        item {
+            OutlinedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Track Data Debug Info:",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Total tracks: ${tracks.size}")
+
+                    if (tracks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val track = tracks[0]
+                        Text("First Track:")
+                        Text("  Title: ${track.title}")
+                        Text("  Artist: ${track.artistName}")
+                        Text("  URI: ${track.fileUri}")
+                        Text("  Duration: ${formatTime(track.durationMs)}")
+                    } else {
+                        Text("No tracks found in repository")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Sample tracks: ${tracks.count { it.fileUri.startsWith("sample://") }}",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        "Real tracks: ${tracks.count { !it.fileUri.startsWith("sample://") }}",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
+
+        stickyHeader { sortControls() }
         if (tracks.isEmpty()) {
-            item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No tracks found") } }
+            item {
+                Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                    Text("No tracks found", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
-        itemsIndexed(tracks, key = { _, it -> it.id }) { index, track ->
+        itemsIndexed(tracks) { _, track ->
             val selected = selectedIds.contains(track.id)
-            val baseColor = if (index % 2 == 0) Charcoal else DarkGrey
+            val selectBg = MaterialTheme.colorScheme.primaryContainer
+            val baseColor = MaterialTheme.colorScheme.surface
+
             Row(
                 Modifier
                     .fillMaxWidth()

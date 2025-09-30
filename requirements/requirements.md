@@ -323,7 +323,7 @@ The queue should be implemented using a data structure like a doubly linked list
 
 The track cache is a temporary data structure which holds pointers (file locations) and meta data for the audio files on the device. It allows for fast reading of track meta data and optimized file retrieval for the device's internal music player. It’s essentially a database of pointers so that the application doesn’t have to search from the file system of the device for essential functionality.
 
-The track cache runs a background service which recursively scans the device file system for playable audio files starting at the root folder defined in settings. Ideally this scanning is triggered every time the app is opened and the track cache is updated every time an audio file is added or removed from the file system.
+The track cache runs a background service which recursively scans the device file system for playable audio files starting at the root music folder defined in settings. Ideally this scanning is triggered every time the app is opened and the track cache is updated every time an audio file is added or removed from the file system.
 
 ## Playlist Database
 

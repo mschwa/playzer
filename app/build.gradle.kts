@@ -53,6 +53,7 @@ android {
 dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.documentfile) // Added DocumentFile dependency
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -69,6 +70,7 @@ dependencies {
 
     // Lifecycle / ViewModel
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.process) // Added lifecycle-process dependency
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
