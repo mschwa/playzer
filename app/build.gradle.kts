@@ -68,6 +68,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
 
+    // Coil - Image Loading
+    implementation(libs.coil)
+    implementation(libs.coil.compose)
+
     // Lifecycle / ViewModel
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.process) // Added lifecycle-process dependency

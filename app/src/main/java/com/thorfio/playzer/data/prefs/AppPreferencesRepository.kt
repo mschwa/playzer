@@ -23,6 +23,7 @@ class AppPreferencesRepository(private val context: Context) {
         val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
         val MUSIC_FOLDER_PATH_KEY = stringPreferencesKey("music_folder_path")
         val LAST_SCAN_TIMESTAMP_KEY = longPreferencesKey("last_scan_timestamp")
+        val SELECTED_MAIN_TAB_KEY = intPreferencesKey("selected_main_tab") // Added key for main tab selection
     }
 
     // UI Theme Preferences
@@ -75,6 +76,19 @@ class AppPreferencesRepository(private val context: Context) {
             preferences[LAST_SCAN_TIMESTAMP_KEY] ?: 0L
         }
 
+    // Selected Main Tab Preference
+    val selectedMainTab: Flow<Int> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[SELECTED_MAIN_TAB_KEY] ?: 0 // Default to first tab
+        }
+
     // Functions to update preferences
     suspend fun setDarkThemeEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
@@ -101,6 +115,12 @@ class AppPreferencesRepository(private val context: Context) {
     suspend fun updateLastScanTimestamp(timestamp: Long) {
         context.dataStore.edit { preferences ->
             preferences[LAST_SCAN_TIMESTAMP_KEY] = timestamp
+        }
+    }
+
+    suspend fun setSelectedMainTab(tabIndex: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[SELECTED_MAIN_TAB_KEY] = tabIndex
         }
     }
 }

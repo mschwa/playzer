@@ -16,9 +16,11 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -41,6 +43,7 @@ import com.thorfio.playzer.ui.theme.DarkGrey
 import com.thorfio.playzer.ui.theme.LightGrey
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalConfiguration
+import kotlinx.coroutines.CoroutineScope
 
 private enum class MainTab { TRACKS, PLAYLISTS, ALBUMS, ARTISTS }
 private enum class TrackSortField { TITLE, DATE_ADDED, ALBUM, ARTIST }
@@ -48,8 +51,13 @@ private enum class SortOrder { ASC, DESC }
 private enum class AlbumSortOrder { ASC, DESC }
 private enum class ArtistSortOrder { ASC, DESC }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(nav: NavController) {
+fun MainScreen(
+    nav: NavController,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
     val repo = ServiceLocator.musicRepository
     val tracks by repo.tracks.collectAsState()
     val albums by repo.albums.collectAsState()
@@ -58,7 +66,27 @@ fun MainScreen(nav: NavController) {
     val playlists by playlistStore.playlists.collectAsState()
     val playback = ServiceLocator.playbackController
 
-    var currentTab by remember { mutableStateOf(MainTab.TRACKS) }
+    // Access preferences repository
+    val prefsRepo = ServiceLocator.appPreferencesRepository
+
+    // Read the saved tab index from preferences
+    val savedTabIndex by prefsRepo.selectedMainTab.collectAsState(initial = 0)
+
+    // Initialize currentTab with the saved tab preference
+    var currentTab by remember(savedTabIndex) {
+        mutableStateOf(MainTab.values().getOrElse(savedTabIndex) { MainTab.TRACKS })
+    }
+
+    // Function to update tab and save preference
+    val updateTab: (MainTab) -> Unit = { tab ->
+        if (currentTab != tab) {
+            currentTab = tab
+            // Save the tab selection to preferences
+            scope.launch {
+                prefsRepo.setSelectedMainTab(tab.ordinal)
+            }
+        }
+    }
 
     // Sort state
     var trackSortField by remember { mutableStateOf(TrackSortField.TITLE) }
@@ -76,7 +104,7 @@ fun MainScreen(nav: NavController) {
 
     // Replaced rememberSnackbarHostState with manual remember due to unresolved reference
     val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    // Using passed scope instead
     var showDeleteDialog by remember { mutableStateOf(false) }
     var pendingDeleteIds by remember { mutableStateOf<List<String>>(emptyList()) }
     var lastDeletedTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
@@ -100,13 +128,50 @@ fun MainScreen(nav: NavController) {
     val tabRowHeight: Dp = (screenHeightDp / 24f).dp      // Tab select row
     val trackRowHeight: Dp = (screenHeightDp / 12f).dp    // Approx row height spec
 
-    Box(Modifier.fillMaxSize()) {
-        // Snackbar host at natural bottom (mini player now at top, so no offset needed)
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-        Column(Modifier.fillMaxSize()) {
+    // Add Scaffold with TopAppBar here
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("My Music") },
+                navigationIcon = {
+                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { nav.navigate(Routes.SEARCH) }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+                }
+            )
+        },
+        // Add FloatingActionButton in Scaffold parameter instead of in content
+        floatingActionButton = {
+            when (currentTab) {
+                MainTab.TRACKS -> {
+                    FloatingActionButton(
+                        onClick = { if (tracks.isNotEmpty()) playback.loadAndPlay(tracks.shuffled()) }
+                    ) {
+                        Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle")
+                    }
+                }
+                MainTab.PLAYLISTS -> {
+                    FloatingActionButton(
+                        onClick = { showCreatePlaylistDialog = true }
+                    ) {
+                        Text("+")
+                    }
+                }
+                else -> { /* No FAB for other tabs */ }
+            }
+        }
+    ) { innerPadding ->
+        // Wrap existing content with padding from Scaffold
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
             // Second header row: Minimized player (top app bar is outside this composable in AppRoot)
             MinimizedPlayerBar(onClick = { nav.navigate(Routes.PLAYER) }, modifier = Modifier.height(miniPlayerHeight))
             // Tab row with specified height
@@ -116,7 +181,7 @@ fun MainScreen(nav: NavController) {
                         Tab(
                             text = { Text(tab.name.lowercase().replaceFirstChar { it.uppercase() }) },
                             selected = tab == currentTab,
-                            onClick = { currentTab = tab }
+                            onClick = { updateTab(tab) }
                         )
                     }
                 }
@@ -221,23 +286,9 @@ fun MainScreen(nav: NavController) {
                 }
             }
         }
-        // Floating buttons back to standard bottom padding (mini player no longer at bottom)
-        if (currentTab == MainTab.TRACKS) {
-            FloatingActionButton(
-                onClick = { if (tracks.isNotEmpty()) playback.loadAndPlay(tracks.shuffled()) },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
-            ) { Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle") }
-        }
-        if (currentTab == MainTab.PLAYLISTS) {
-            FloatingActionButton(
-                onClick = { showCreatePlaylistDialog = true },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
-            ) { Text("+") }
-        }
-
         // Selection toolbar remains overlay at top
         if (selectionMode && currentTab == MainTab.TRACKS) {
-            Surface(tonalElevation = 4.dp, shadowElevation = 8.dp, modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
+            Surface(tonalElevation = 4.dp, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { selectionMode = false; selectedIds.clear() }) { Icon(Icons.Filled.Close, contentDescription = "Cancel selection") }
                     IconButton(onClick = {
