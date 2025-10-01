@@ -437,46 +437,6 @@ private fun TrackList(
     var menuForTrackId by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(Modifier.fillMaxSize()) {
-        // Add debug info at the top
-        item {
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Track Data Debug Info:",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Total tracks: ${tracks.size}")
-
-                    if (tracks.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val track = tracks[0]
-                        Text("First Track:")
-                        Text("  Title: ${track.title}")
-                        Text("  Artist: ${track.artistName}")
-                        Text("  URI: ${track.fileUri}")
-                        Text("  Duration: ${formatTime(track.durationMs)}")
-                    } else {
-                        Text("No tracks found in repository")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Sample tracks: ${tracks.count { it.fileUri.startsWith("sample://") }}",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Text(
-                        "Real tracks: ${tracks.count { !it.fileUri.startsWith("sample://") }}",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-
         stickyHeader { sortControls() }
         if (tracks.isEmpty()) {
             item {
@@ -485,16 +445,17 @@ private fun TrackList(
                 }
             }
         }
-        itemsIndexed(tracks) { _, track ->
+        itemsIndexed(tracks) { index, track ->
             val selected = selectedIds.contains(track.id)
             val selectBg = MaterialTheme.colorScheme.primaryContainer
-            val baseColor = MaterialTheme.colorScheme.surface
+            // Apply alternating row colors using the same pattern as Album and Artist panels
+            val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
 
             Row(
                 Modifier
                     .fillMaxWidth()
                     .height(rowHeight)
-                    .background(if (selected) selectBg else baseColor)
+                    .background(if (selected) selectBg else rowColor)
                     .combinedClickable(
                         onClick = { onRowClick(track) },
                         onLongClick = { if (!selectionMode) onEnterSelection(track) else onToggleSelect(track) }
