@@ -448,8 +448,8 @@ private fun TrackList(
         itemsIndexed(tracks) { index, track ->
             val selected = selectedIds.contains(track.id)
             val selectBg = MaterialTheme.colorScheme.primaryContainer
-            // Apply alternating row colors using the same pattern as Album and Artist panels
-            val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
+            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
+            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
 
             Row(
                 Modifier
@@ -523,7 +523,8 @@ private fun PlaylistsPanel(
             item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No playlists yet") } }
         }
         itemsIndexed(playlists, key = { _, it -> it.id }) { index, p ->
-            val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
+            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
+            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -558,7 +559,16 @@ private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder
         Row(Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("$count Tracks", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
             var menu by remember { mutableStateOf(false) }
-            AssistChip(onClick = { menu = true }, label = { Text("${field.name.lowercase().replaceFirstChar { it.uppercase() }} • ${if (order==SortOrder.ASC) "Asc" else "Desc"}") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) })
+            // Replace AssistChip with IconButton
+            IconButton(
+                onClick = { menu = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Sort,
+                    contentDescription = "Sort by ${field.name.lowercase().replaceFirstChar { it.uppercase() }} (${if (order==SortOrder.ASC) "Ascending" else "Descending"})"
+                )
+            }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 TrackSortField.values().forEach { f ->
                     DropdownMenuItem(text = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }, onClick = { onChangeField(f); menu = false })
@@ -575,7 +585,16 @@ private fun SimpleSortHeader(label: String, asc: Boolean, onToggle: () -> Unit) 
     Surface(tonalElevation = 2.dp, color = Charcoal) {
         Row(Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            AssistChip(onClick = onToggle, label = { Text(if (asc) "Asc" else "Desc") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) })
+            // Replace AssistChip with IconButton
+            IconButton(
+                onClick = onToggle,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Sort,
+                    contentDescription = "Toggle sort order (currently ${if (asc) "Ascending" else "Descending"})"
+                )
+            }
         }
     }
 }
@@ -596,7 +615,8 @@ private fun AlbumsPanel(
         stickyHeader { if (sortControls != null) sortControls() }
         if (albums.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No albums") } }
         itemsIndexed(albums, key = { _, it -> it.id }) { index, a ->
-            val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
+            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
+            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
             Row(Modifier.fillMaxWidth().background(rowColor).padding(16.dp).clickable { nav.navigate("album/${a.id}") }, verticalAlignment = Alignment.CenterVertically) {
                 val artTrack = a.trackIds.firstOrNull()?.let { id -> repo.tracks.collectAsState().value.firstOrNull { it.id == id } }
                 TrackAlbumArt(track = artTrack, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
@@ -633,7 +653,8 @@ private fun ArtistsPanel(
         stickyHeader { if (sortControls != null) sortControls() }
         if (artists.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No artists") } }
         itemsIndexed(artists, key = { _, it -> it.id }) { index, artist ->
-            val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
+            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
+            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
             Row(Modifier.fillMaxWidth().background(rowColor).padding(16.dp).clickable { nav.navigate("artist/${artist.id}") }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(artist.name)
