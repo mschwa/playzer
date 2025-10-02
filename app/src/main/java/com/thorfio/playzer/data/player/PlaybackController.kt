@@ -2,6 +2,7 @@ package com.thorfio.playzer.data.player
 
 import android.content.Context
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.data.queue.InternalQueue
@@ -26,11 +27,49 @@ class PlaybackController(
     private val _currentTrack = MutableStateFlow<Track?>(null)
     val currentTrack: StateFlow<Track?> = _currentTrack.asStateFlow()
 
+    // Add position tracking
+    private val _currentPositionMs = MutableStateFlow(0L)
+    val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()
+
+    // Position update job
+    private var positionUpdateJob: Job? = null
+
     init {
         scope.launch {
             internalQueue.currentIndex.collect {
                 _currentTrack.value = internalQueue.currentTrack
             }
+        }
+
+        // Listen for player state changes
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                super.onPlaybackStateChanged(playbackState)
+                updatePositionTracking()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                _isPlaying.value = isPlaying
+                updatePositionTracking()
+            }
+        })
+    }
+
+    // Start or stop position tracking based on playback state
+    private fun updatePositionTracking() {
+        positionUpdateJob?.cancel()
+
+        if (player.isPlaying) {
+            positionUpdateJob = scope.launch {
+                while (isActive) {
+                    _currentPositionMs.value = player.currentPosition
+                    delay(100) // Update position 10 times per second
+                }
+            }
+        } else {
+            // Update position one last time when paused
+            _currentPositionMs.value = player.currentPosition
         }
     }
 
@@ -40,14 +79,13 @@ class PlaybackController(
         rebuildPlayerQueue()
         player.prepare()
         player.playWhenReady = true
-        _isPlaying.value = true
     }
 
     fun togglePlayPause() {
         if (player.isPlaying) {
-            player.pause(); _isPlaying.value = false
+            player.pause()
         } else {
-            player.play(); _isPlaying.value = true
+            player.play()
         }
     }
 
@@ -61,6 +99,11 @@ class PlaybackController(
         player.seekToPreviousMediaItem()
     }
 
+    fun seekTo(positionMs: Long) {
+        player.seekTo(positionMs)
+        _currentPositionMs.value = positionMs
+    }
+
     private fun rebuildPlayerQueue() {
         player.clearMediaItems()
         internalQueue.queue.value.forEach { t ->
@@ -71,6 +114,7 @@ class PlaybackController(
     }
 
     fun release() {
+        positionUpdateJob?.cancel()
         player.release()
         scope.cancel()
     }

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -35,9 +36,19 @@ private object ArtworkCache {
     fun put(key: String, bmp: ImageBitmap) { map[key] = bmp }
 }
 
-// LRU cache for artwork bitmaps (ImageBitmap converted) with max entries
+// LRU cache for regular artwork bitmaps
 private object ArtworkLruCache {
     private const val MAX_ENTRIES = 100
+    private val map = object : LinkedHashMap<String, ImageBitmap>(MAX_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?): Boolean = size > MAX_ENTRIES
+    }
+    @Synchronized fun get(key: String) = map[key]
+    @Synchronized fun put(key: String, value: ImageBitmap) { map[key] = value }
+}
+
+// LRU cache specifically for high-quality artwork (for PlayerScreen)
+private object HighQualityArtworkCache {
+    private const val MAX_ENTRIES = 20  // Fewer entries since these are larger images
     private val map = object : LinkedHashMap<String, ImageBitmap>(MAX_ENTRIES, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?): Boolean = size > MAX_ENTRIES
     }
@@ -58,16 +69,30 @@ private fun decodeDownscaled(bytes: ByteArray, target: Int): Bitmap? {
     } catch (_: Exception) { null }
 }
 
+// Function to decode at full quality or higher quality than standard
+private fun decodeHighQuality(bytes: ByteArray): Bitmap? {
+    return try {
+        // Use higher quality decoding options
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.ARGB_8888  // Use high quality color configuration
+            inMutable = false  // Immutable for better caching
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    } catch (_: Exception) { null }
+}
+
 @Composable
 fun TrackAlbumArt(
     track: Track? = null,
     album: com.thorfio.playzer.data.model.Album? = null,
     size: Dp = 48.dp,
     modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    highQuality: Boolean = false  // New parameter to request high quality images
 ) {
     val context = LocalContext.current
     val repo = ServiceLocator.musicRepository
+    val scope = rememberCoroutineScope()
 
     // Get fileUri from track or from album's first track
     val fileUri: String? = when {
@@ -86,11 +111,21 @@ fun TrackAlbumArt(
         else -> null
     }
 
+    // For high quality mode, create a state that can hold both regular and high quality images
     var art by remember(fileUri, size) { mutableStateOf<ImageBitmap?>(null) }
+    var highQualityArt by remember(fileUri) { mutableStateOf<ImageBitmap?>(null) }
+    var isLoadingHighQuality by remember(fileUri) { mutableStateOf(false) }
 
+    // Effect to load the standard quality image (fast loading)
     LaunchedEffect(fileUri, size) {
         if (fileUri == null) return@LaunchedEffect
-        ArtworkLruCache.get(fileUri)?.let { art = it; return@LaunchedEffect }
+
+        // Try to get from cache first
+        ArtworkLruCache.get(fileUri)?.let {
+            art = it
+            return@LaunchedEffect
+        }
+
         val result: ImageBitmap? = withContext(Dispatchers.IO) {
             runCatching {
                 val retriever = MediaMetadataRetriever()
@@ -102,17 +137,55 @@ fun TrackAlbumArt(
                 } else null
             }.getOrNull()
         }
+
         result?.let { bmp ->
             art = bmp
             ArtworkLruCache.put(fileUri, bmp)
         }
     }
 
-    if (art != null) {
+    // Effect to load high quality image when requested (for player screen)
+    LaunchedEffect(fileUri, highQuality) {
+        // Only proceed if high quality is requested and we have a file URI
+        if (!highQuality || fileUri == null) return@LaunchedEffect
+
+        // Check if we already have the high quality image cached
+        HighQualityArtworkCache.get(fileUri)?.let {
+            highQualityArt = it
+            return@LaunchedEffect
+        }
+
+        isLoadingHighQuality = true
+
+        // Load high quality image in background
+        val result: ImageBitmap? = withContext(Dispatchers.IO) {
+            runCatching {
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(context, android.net.Uri.parse(fileUri))
+                val bytes = retriever.embeddedPicture
+                retriever.release()
+                if (bytes != null) {
+                    decodeHighQuality(bytes)?.asImageBitmap()
+                } else null
+            }.getOrNull()
+        }
+
+        result?.let { bmp ->
+            highQualityArt = bmp
+            HighQualityArtworkCache.put(fileUri, bmp)
+        }
+
+        isLoadingHighQuality = false
+    }
+
+    // Show the highest quality image available (high quality if loaded, otherwise regular)
+    val displayArt = if (highQuality && highQualityArt != null) highQualityArt else art
+
+    if (displayArt != null) {
         Image(
-            bitmap = art!!,
+            bitmap = displayArt,
             contentDescription = track?.title ?: album?.title ?: "Artwork",
-            modifier = modifier.size(size).clip(MaterialTheme.shapes.medium),
+            modifier = modifier.clip(if (highQuality) MaterialTheme.shapes.large else MaterialTheme.shapes.medium),
             contentScale = contentScale
         )
     } else {
@@ -121,8 +194,7 @@ fun TrackAlbumArt(
         val letter = title.firstOrNull()?.uppercaseChar() ?: '?'
         Box(
             modifier = modifier
-                .size(size)
-                .clip(MaterialTheme.shapes.medium)
+                .clip(if (highQuality) MaterialTheme.shapes.large else MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
         ) {
