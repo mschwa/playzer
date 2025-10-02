@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -58,10 +59,35 @@ private fun decodeDownscaled(bytes: ByteArray, target: Int): Bitmap? {
 }
 
 @Composable
-fun TrackAlbumArt(track: Track?, size: Dp, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop) {
+fun TrackAlbumArt(
+    track: Track? = null,
+    album: com.thorfio.playzer.data.model.Album? = null,
+    size: Dp = 48.dp,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop
+) {
     val context = LocalContext.current
-    val fileUri = track?.fileUri
+    val repo = ServiceLocator.musicRepository
+
+    // Get fileUri from track or from album's first track
+    val fileUri: String? = when {
+        track != null -> track.fileUri
+        album != null -> {
+            // Get first track ID from album
+            val firstTrackId = album.trackIds.firstOrNull()
+            if (firstTrackId != null) {
+                // Get the track using the tracksByIds function
+                val firstTrack = repo.tracksByIds(listOf(firstTrackId)).firstOrNull()
+                firstTrack?.fileUri
+            } else {
+                null
+            }
+        }
+        else -> null
+    }
+
     var art by remember(fileUri, size) { mutableStateOf<ImageBitmap?>(null) }
+
     LaunchedEffect(fileUri, size) {
         if (fileUri == null) return@LaunchedEffect
         ArtworkLruCache.get(fileUri)?.let { art = it; return@LaunchedEffect }
@@ -81,16 +107,18 @@ fun TrackAlbumArt(track: Track?, size: Dp, modifier: Modifier = Modifier, conten
             ArtworkLruCache.put(fileUri, bmp)
         }
     }
+
     if (art != null) {
         Image(
             bitmap = art!!,
-            contentDescription = track?.title ?: "Artwork",
+            contentDescription = track?.title ?: album?.title ?: "Artwork",
             modifier = modifier.size(size).clip(MaterialTheme.shapes.medium),
             contentScale = contentScale
         )
     } else {
         // Fallback: colored box with first letter
-        val letter = (track?.title?.firstOrNull() ?: '?').uppercaseChar()
+        val title = track?.title ?: album?.title ?: "?"
+        val letter = title.firstOrNull()?.uppercaseChar() ?: '?'
         Box(
             modifier = modifier
                 .size(size)

@@ -1,12 +1,12 @@
 package com.thorfio.playzer.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,11 +14,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
+import com.thorfio.playzer.ui.components.TrackAlbumArt
 import com.thorfio.playzer.ui.components.TrackListComponent
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.navigation.RouteBuilder
@@ -42,11 +47,7 @@ fun ArtistScreen(nav: NavController, artistId: String) {
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Artist Icon", tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text(artist?.name ?: "Artist")
-                    }
+                    Text(artist?.name ?: "Artist")
                 },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
@@ -158,20 +159,50 @@ private fun ArtistAlbumsRow(
     ) {
         albums.forEach { album ->
             Surface(
+                shape = MaterialTheme.shapes.medium,
                 tonalElevation = 2.dp,
                 modifier = Modifier
-                    .size(width = 120.dp, height = 80.dp)
+                    .size(120.dp) // Changed to square shape (120dp x 120dp)
                     .clickable { onAlbumClick(album) }
             ) {
                 Box(
                     Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
                 ) {
+                    // Display album cover art
+                    TrackAlbumArt(
+                        track = null,
+                        album = album,
+                        size = 120.dp, // Match the container size
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // Gradient overlay at the bottom to make text readable
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp) // Reduced height for the gradient overlay
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.7f)
+                                    )
+                                )
+                            )
+                    )
+
                     Text(
                         album.title,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
                     )
                 }
             }
