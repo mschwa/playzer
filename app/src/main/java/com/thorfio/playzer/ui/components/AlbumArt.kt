@@ -88,7 +88,8 @@ fun TrackAlbumArt(
     size: Dp = 48.dp,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    highQuality: Boolean = false  // New parameter to request high quality images
+    highQuality: Boolean = false,  // Parameter to request high quality images
+    squareCorners: Boolean = false  // New parameter to control if corners should be square (90 degrees)
 ) {
     val context = LocalContext.current
     val repo = ServiceLocator.musicRepository
@@ -185,7 +186,12 @@ fun TrackAlbumArt(
         Image(
             bitmap = displayArt,
             contentDescription = track?.title ?: album?.title ?: "Artwork",
-            modifier = modifier.clip(if (highQuality) MaterialTheme.shapes.large else MaterialTheme.shapes.medium),
+            // Only apply shape clipping if squareCorners is false
+            modifier = if (squareCorners) {
+                modifier
+            } else {
+                modifier.clip(if (highQuality) MaterialTheme.shapes.large else MaterialTheme.shapes.medium)
+            },
             contentScale = contentScale
         )
     } else {
@@ -193,9 +199,14 @@ fun TrackAlbumArt(
         val title = track?.title ?: album?.title ?: "?"
         val letter = title.firstOrNull()?.uppercaseChar() ?: '?'
         Box(
-            modifier = modifier
-                .clip(if (highQuality) MaterialTheme.shapes.large else MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.primary),
+            // Only apply shape clipping if squareCorners is false
+            modifier = if (squareCorners) {
+                modifier.background(MaterialTheme.colorScheme.primary)
+            } else {
+                modifier
+                    .clip(if (highQuality) MaterialTheme.shapes.large else MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.primary)
+            },
             contentAlignment = Alignment.Center
         ) {
             Text(letter.toString(), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Clip, color = MaterialTheme.colorScheme.onPrimary)

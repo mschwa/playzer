@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import com.thorfio.playzer.ui.navigation.RouteBuilder
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.theme.Charcoal
 import com.thorfio.playzer.ui.theme.DarkGrey
+import com.thorfio.playzer.ui.theme.LightGrey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateFloatAsState
@@ -80,7 +82,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             PlaylistHeaderArt(playlist = playlist, tracks = tracks)
-            HeaderStatsRow(playlist, tracks)
+            // HeaderStatsRow has been removed as its functionality is now in PlaylistHeaderArt
             HorizontalDivider()
             TrackListingForPlaylist(
                 playlistId = playlistId,
@@ -153,35 +155,125 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
 }
 
 @Composable
-private fun HeaderStatsRow(playlist: Playlist?, tracks: List<Track>) {
-    val totalDuration = tracks.sumOf { it.durationMs } / 1000
-    val mins = totalDuration / 60
-    val secs = totalDuration % 60
-    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Playlist Icon", tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(playlist?.name ?: "--", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>) {
+    // Get a random track for the background if tracks are available, otherwise use the cover track
+    val coverTrack = tracks.firstOrNull { it.id == playlist?.coverTrackId } ?: tracks.firstOrNull()
+    val randomTrack = remember(tracks) {
+        if (tracks.isNotEmpty()) tracks.random() else null
+    }
+
+    // Use either the random track or the cover track
+    val displayTrack = randomTrack ?: coverTrack
+
+    // Increased height to match AlbumScreen (180dp)
+    val height = 180.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        // Album art as background image
+        if (displayTrack != null) {
+            TrackAlbumArt(
+                track = displayTrack,
+                size = 500.dp, // Large size to ensure good quality
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                highQuality = true, // Set to true for highest quality image rendering
+                squareCorners = true // Set to true for 90-degree corners like in AlbumScreen
+            )
+
+            // Gradient overlay for better text visibility - matches AlbumScreen style
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0x73000000) // 45% opacity black
+                            )
+                        )
+                    )
+            )
+
+            // Playlist information positioned at bottom - matches AlbumScreen layout
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomStart
+            ) {
+                PlaylistHeaderInfo(
+                    playlist = playlist,
+                    tracks = tracks
+                )
             }
-            Text("${tracks.size} tracks • ${"%d:%02d".format(mins, secs)}", style = MaterialTheme.typography.bodySmall)
+        } else {
+            // Fallback if no tracks
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = "Playlist Icon",
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                )
+            }
         }
-        if (tracks.isNotEmpty()) FilledTonalButton(onClick = { ServiceLocator.playbackController.loadAndPlay(tracks) }) { Text("Play All") }
     }
 }
 
 @Composable
-private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>) {
-    val coverTrack = tracks.firstOrNull { it.id == playlist?.coverTrackId } ?: tracks.firstOrNull()
-    val height = 140.dp
-    Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth().height(height)) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer)) {
-            Text(
-                text = coverTrack?.albumTitle ?: playlist?.name ?: "--",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.align(Alignment.Center)
-            )
+private fun PlaylistHeaderInfo(playlist: Playlist?, tracks: List<Track>) {
+    val totalDuration = tracks.sumOf { it.durationMs } / 1000
+    val mins = totalDuration / 60
+    val secs = totalDuration % 60
+
+    Column {
+        // Playlist name
+        Text(
+            playlist?.name ?: "--",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // Track count and duration
+        Text(
+            "${tracks.size} tracks • ${"%d:%02d".format(mins, secs)}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.8f)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Play All button
+        if (tracks.isNotEmpty()) {
+            FilledTonalButton(
+                onClick = { ServiceLocator.playbackController.loadAndPlay(tracks) },
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
+                )
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Play All")
+                }
+            }
         }
     }
 }
@@ -218,7 +310,8 @@ private fun TrackListingForPlaylist(
             key = { _, item -> item.id }
         ) { index, track ->
             val isBeingDragged = index == draggedItemIndex
-            val rowColor = if (index % 2 == 0) Charcoal else DarkGrey
+            // Changed from DarkGrey to LightGrey for all rows
+            val rowColor = LightGrey
             val rowModifier = Modifier
                 .animateItem()
                 .fillMaxWidth()

@@ -607,25 +607,39 @@ private fun PlaylistsPanel(
 @Composable
 private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder, onChangeField: (TrackSortField) -> Unit, onToggleOrder: () -> Unit) {
     Surface(tonalElevation = 2.dp, color = Charcoal) {
-        Row(Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("$count Tracks", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            var menu by remember { mutableStateOf(false) }
-            // Replace AssistChip with IconButton
-            IconButton(
-                onClick = { menu = true },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Sort,
-                    contentDescription = "Sort by ${field.name.lowercase().replaceFirstChar { it.uppercase() }} (${if (order==SortOrder.ASC) "Ascending" else "Descending"})"
-                )
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                TrackSortField.values().forEach { f ->
-                    DropdownMenuItem(text = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }, onClick = { onChangeField(f); menu = false })
+        Row(
+            Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween // This ensures proper spacing between left and right content
+        ) {
+            // Left side: Track count label
+            Text("$count Tracks", style = MaterialTheme.typography.labelLarge)
+
+            // Right side: Sort icon and dropdown
+            Box {
+                var menu by remember { mutableStateOf(false) }
+                IconButton(
+                    onClick = { menu = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = "Sort by ${field.name.lowercase().replaceFirstChar { it.uppercase() }} (${if (order==SortOrder.ASC) "Ascending" else "Descending"})"
+                    )
                 }
-                HorizontalDivider()
-                DropdownMenuItem(text = { Text(if (order == SortOrder.ASC) "Descending" else "Ascending") }, onClick = { onToggleOrder(); menu = false })
+
+                // Position the dropdown on the right side
+                DropdownMenu(
+                    expanded = menu,
+                    onDismissRequest = { menu = false },
+                    offset = androidx.compose.ui.unit.DpOffset(0.dp, 0.dp) // Default position (right-aligned with the icon)
+                ) {
+                    TrackSortField.values().forEach { f ->
+                        DropdownMenuItem(text = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }, onClick = { onChangeField(f); menu = false })
+                    }
+                    HorizontalDivider()
+                    DropdownMenuItem(text = { Text(if (order == SortOrder.ASC) "Descending" else "Ascending") }, onClick = { onToggleOrder(); menu = false })
+                }
             }
         }
     }
@@ -634,9 +648,15 @@ private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder
 @Composable
 private fun SimpleSortHeader(label: String, asc: Boolean, onToggle: () -> Unit) {
     Surface(tonalElevation = 2.dp, color = Charcoal) {
-        Row(Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            // Replace AssistChip with IconButton
+        Row(
+            Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween // This ensures proper spacing between left and right content
+        ) {
+            // Left side: Album/Artist count label
+            Text(label, style = MaterialTheme.typography.labelLarge)
+
+            // Right side: Sort icon
             IconButton(
                 onClick = onToggle,
                 modifier = Modifier.size(32.dp)
