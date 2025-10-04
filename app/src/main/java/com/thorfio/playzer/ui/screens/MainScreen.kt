@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,7 +39,6 @@ import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.navigation.RouteBuilder
 import com.thorfio.playzer.ui.theme.Charcoal
 import com.thorfio.playzer.ui.theme.DarkGrey
-import com.thorfio.playzer.ui.theme.LightGrey
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +72,7 @@ fun MainScreen(
 
     // Initialize currentTab with the saved tab preference
     var currentTab by remember(savedTabIndex) {
-        mutableStateOf(MainTab.values().getOrElse(savedTabIndex) { MainTab.TRACKS })
+        mutableStateOf(MainTab.entries.toTypedArray().getOrElse(savedTabIndex) { MainTab.TRACKS })
     }
 
     // Function to update tab and save preference
@@ -142,7 +140,8 @@ fun MainScreen(
                     IconButton(onClick = { nav.navigate(Routes.SEARCH) }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
-                }
+                },
+                modifier = Modifier.height(48.dp)
             )
         },
         // Add FloatingActionButton in Scaffold parameter instead of in content
@@ -176,7 +175,7 @@ fun MainScreen(
             MinimizedPlayerBar(onClick = { nav.navigate(Routes.PLAYER) }, modifier = Modifier.height(miniPlayerHeight))
             // Tab row with specified height
             Surface(tonalElevation = 2.dp) {
-                TabRow(selectedTabIndex = currentTab.ordinal, modifier = Modifier.height(tabRowHeight), containerColor = LightGrey) {
+                TabRow(selectedTabIndex = currentTab.ordinal, modifier = Modifier.height(tabRowHeight), containerColor = DarkGrey) {
                     MainTab.entries.forEach { tab ->
                         Tab(
                             text = { Text(tab.name.lowercase().replaceFirstChar { it.uppercase() }) },
@@ -603,7 +602,7 @@ private fun PlaylistsPanel(
     }
 }
 
-// NEW composables
+// NEW composable
 @Composable
 private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder, onChangeField: (TrackSortField) -> Unit, onToggleOrder: () -> Unit) {
     Surface(tonalElevation = 2.dp, color = Charcoal) {

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -67,28 +68,6 @@ fun AlbumScreen(nav: NavController, albumId: String) {
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = album?.title ?: "Album",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (tracks.isNotEmpty()) IconButton(onClick = {
-                        ServiceLocator.playbackController.loadAndPlay(tracks)
-                        nav.navigate(Routes.PLAYER)
-                    }) { Icon(Icons.Default.PlayArrow, contentDescription = "Play All") }
-                }
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
@@ -135,6 +114,43 @@ fun AlbumScreen(nav: NavController, albumId: String) {
                             )
                         )
                 )
+
+                // Navigation icons overlay at the top
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Back button (left aligned)
+                    IconButton(
+                        onClick = { nav.popBackStack() },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0x33000000), shape = androidx.compose.foundation.shape.CircleShape)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+
+                    // Search button (right aligned)
+                    IconButton(
+                        onClick = { nav.navigate(Routes.SEARCH) },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0x33000000), shape = androidx.compose.foundation.shape.CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = Color.White
+                        )
+                    }
+                }
 
                 // Album information positioned at bottom
                 Box(
