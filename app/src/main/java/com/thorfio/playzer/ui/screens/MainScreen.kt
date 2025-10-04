@@ -121,28 +121,14 @@ fun MainScreen(
 
     val configuration = LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp
-    val headerRowHeight: Dp = (screenHeightDp / 12f).dp   // First row (handled by outer TopAppBar) + we use same for mini player row
-    val miniPlayerHeight: Dp = headerRowHeight            // Second row: minimized player
+    val headerRowHeight: Dp = (screenHeightDp / 24f).dp   // First row (handled by outer TopAppBar) + we use same for mini player row
+    val miniPlayerHeight: Dp = (screenHeightDp / 14f).dp            // Second row: minimized player
     val tabRowHeight: Dp = (screenHeightDp / 24f).dp      // Tab select row
     val trackRowHeight: Dp = (screenHeightDp / 12f).dp    // Approx row height spec
 
-    // Add Scaffold with TopAppBar here
+    // Add Scaffold without TopAppBar
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("My Music") },
-                navigationIcon = {
-                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { nav.navigate(Routes.SEARCH) }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-                }
-            )
-        },
+        // TopAppBar removed from here
         // Add FloatingActionButton in Scaffold parameter instead of in content
         floatingActionButton = {
             when (currentTab) {
@@ -170,7 +156,43 @@ fun MainScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // Second header row: Minimized player (top app bar is outside this composable in AppRoot)
+            // Custom navigation row replacing the TopAppBar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(headerRowHeight)
+                    .background(Charcoal)
+                    .padding(horizontal = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left side with menu button and title
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left-aligned menu button (hamburger menu)
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        }
+
+                        // Title positioned next to menu button
+                        Text(
+                            "Music Library",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+
+                    // Right-aligned search icon (in the main Row)
+                    IconButton(onClick = { nav.navigate(Routes.SEARCH) }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+                }
+            }
+
+            // Second header row: Minimized player
             MinimizedPlayerBar(onClick = { nav.navigate(Routes.PLAYER) }, modifier = Modifier.height(miniPlayerHeight))
             // Tab row with specified height
             Surface(tonalElevation = 2.dp) {
