@@ -106,7 +106,12 @@ fun TrackListComponent(
                     TrackAlbumArt(track = track, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
 
                     Column(Modifier.weight(1f)) {
-                        Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            track.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = MaterialTheme.typography.bodyMedium.fontSize * 0.835f
+                        )
                         Text(
                             if (showAlbumName) track.albumTitle else track.artistName,
                             style = MaterialTheme.typography.labelSmall,

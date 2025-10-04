@@ -47,7 +47,12 @@ fun ArtistScreen(nav: NavController, artistId: String) {
         topBar = {
             TopAppBar(
                 title = {
-                    Text(artist?.name ?: "Artist")
+                    Text(
+                        text = artist?.name ?: "Artist",
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize * 0.835f,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {

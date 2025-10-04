@@ -174,7 +174,12 @@ private fun TrackRowSearch(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Column(Modifier.weight(1f)) {
-            Text(t.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                t.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = MaterialTheme.typography.bodyMedium.fontSize * 0.835f
+            )
             Text(t.artistName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(formatTime(t.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp))

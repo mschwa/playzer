@@ -32,7 +32,6 @@ import com.thorfio.playzer.ui.navigation.RouteBuilder
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.theme.Charcoal
 import com.thorfio.playzer.ui.theme.DarkGrey
-import com.thorfio.playzer.ui.theme.LightGrey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateFloatAsState
@@ -241,6 +240,7 @@ private fun PlaylistHeaderInfo(playlist: Playlist?, tracks: List<Track>) {
         Text(
             playlist?.name ?: "--",
             style = MaterialTheme.typography.headlineSmall,
+            fontSize = MaterialTheme.typography.headlineSmall.fontSize * 0.835f,
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -311,7 +311,7 @@ private fun TrackListingForPlaylist(
         ) { index, track ->
             val isBeingDragged = index == draggedItemIndex
             // Changed from DarkGrey to LightGrey for all rows
-            val rowColor = LightGrey
+            val rowColor = DarkGrey
             val rowModifier = Modifier
                 .animateItem()
                 .fillMaxWidth()
@@ -434,7 +434,12 @@ private fun TrackListingForPlaylist(
 
                 TrackAlbumArt(track = track, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        track.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontSize = MaterialTheme.typography.bodyMedium.fontSize * 0.835f
+                    )
                     Text(track.artistName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { onPlay(index) }) { Icon(Icons.Filled.PlayArrow, contentDescription = "Play") }

@@ -230,7 +230,13 @@ private fun AlbumHeader(albumTitle: String?, artistName: String?, trackCount: In
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Album Icon", tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text(albumTitle ?: "--", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    albumTitle ?: "--",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = MaterialTheme.typography.titleMedium.fontSize * 0.835f,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Text(artistName ?: "--", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("$trackCount tracks", style = MaterialTheme.typography.labelSmall)
