@@ -140,8 +140,7 @@ fun MainScreen(
                     IconButton(onClick = { nav.navigate(Routes.SEARCH) }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
-                },
-                modifier = Modifier.height(48.dp)
+                }
             )
         },
         // Add FloatingActionButton in Scaffold parameter instead of in content

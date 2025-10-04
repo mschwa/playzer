@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,7 +67,24 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
     var lastRemoved: Pair<Track, Int>? by remember { mutableStateOf(null) }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (tracks.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = {
+                        // Shuffle the tracks and load them into the player
+                        val shuffledTracks = tracks.shuffled()
+                        ServiceLocator.playbackController.loadAndPlay(shuffledTracks)
+                        nav.navigate(Routes.PLAYER)
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Shuffle,
+                        contentDescription = "Shuffle Play"
+                    )
+                }
+            }
+        }
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             PlaylistHeaderArt(playlist = playlist, tracks = tracks, nav = nav)
