@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,22 +66,10 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
     var lastRemoved: Pair<Track, Int>? by remember { mutableStateOf(null) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(playlist?.name ?: "Playlist") },
-                navigationIcon = { IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
-                actions = {
-                    if (playlist != null) {
-                        IconButton(onClick = { showRename = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Rename") }
-                        IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Filled.Delete, contentDescription = "Delete Playlist") }
-                    }
-                }
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
-            PlaylistHeaderArt(playlist = playlist, tracks = tracks)
+            PlaylistHeaderArt(playlist = playlist, tracks = tracks, nav = nav)
             // HeaderStatsRow has been removed as its functionality is now in PlaylistHeaderArt
             HorizontalDivider()
             TrackListingForPlaylist(
@@ -154,7 +143,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
 }
 
 @Composable
-private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>) {
+private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>, nav: NavController) {
     // Get a random track for the background if tracks are available, otherwise use the cover track
     val coverTrack = tracks.firstOrNull { it.id == playlist?.coverTrackId } ?: tracks.firstOrNull()
     val randomTrack = remember(tracks) {
@@ -198,6 +187,43 @@ private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>) {
                     )
             )
 
+            // Navigation icons overlay at the top
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Back button (left aligned)
+                IconButton(
+                    onClick = { nav.popBackStack() },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0x33000000), shape = androidx.compose.foundation.shape.CircleShape)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+
+                // Search button (right aligned)
+                IconButton(
+                    onClick = { nav.navigate(Routes.SEARCH) },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0x33000000), shape = androidx.compose.foundation.shape.CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.White
+                    )
+                }
+            }
+
             // Playlist information positioned at bottom - matches AlbumScreen layout
             Box(
                 modifier = Modifier
@@ -225,6 +251,43 @@ private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>) {
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                 )
             }
+
+            // Add navigation buttons even when there are no tracks
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Back button (left aligned)
+                IconButton(
+                    onClick = { nav.popBackStack() },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0x33000000), shape = androidx.compose.foundation.shape.CircleShape)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+
+                // Search button (right aligned)
+                IconButton(
+                    onClick = { nav.navigate(Routes.SEARCH) },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0x33000000), shape = androidx.compose.foundation.shape.CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.White
+                    )
+                }
+            }
         }
     }
 }
@@ -235,27 +298,32 @@ private fun PlaylistHeaderInfo(playlist: Playlist?, tracks: List<Track>) {
     val mins = totalDuration / 60
     val secs = totalDuration % 60
 
-    Column {
-        // Playlist name
-        Text(
-            playlist?.name ?: "--",
-            style = MaterialTheme.typography.headlineSmall,
-            fontSize = MaterialTheme.typography.headlineSmall.fontSize * 0.835f,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        // Left side with playlist info
+        Column(modifier = Modifier.weight(1f)) {
+            // Playlist name
+            Text(
+                playlist?.name ?: "--",
+                style = MaterialTheme.typography.headlineSmall,
+                fontSize = MaterialTheme.typography.headlineSmall.fontSize * 0.835f,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-        // Track count and duration
-        Text(
-            "${tracks.size} tracks • ${"%d:%02d".format(mins, secs)}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.8f)
-        )
+            // Track count and duration
+            Text(
+                "${tracks.size} tracks • ${"%d:%02d".format(mins, secs)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+        }
 
-        Spacer(Modifier.height(8.dp))
-
-        // Play All button
+        // Right side with Play All button
         if (tracks.isNotEmpty()) {
             FilledTonalButton(
                 onClick = { ServiceLocator.playbackController.loadAndPlay(tracks) },

@@ -381,7 +381,12 @@ fun MainScreen(
                 },
                 dismissButton = { TextButton(onClick = { showCreatePlaylistDialog = false; newPlaylistName = "" }) { Text("CANCEL") } },
                 title = { Text("Create New Playlist") },
-                text = { OutlinedTextField(value = newPlaylistName, onValueChange = { newPlaylistName = it }, label = { Text("Name") }) }
+                text = { OutlinedTextField(
+                    value = newPlaylistName,
+                    onValueChange = { newPlaylistName = it },
+                    label = { Text("Name") },
+                    singleLine = true
+                ) }
             )
         }
 

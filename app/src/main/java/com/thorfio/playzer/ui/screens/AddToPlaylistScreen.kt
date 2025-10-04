@@ -78,7 +78,12 @@ fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
             },
             dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
             title = { Text("Create New Playlist") },
-            text = { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }) }
+            text = { OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                singleLine = true
+            ) }
         )
     }
 }
