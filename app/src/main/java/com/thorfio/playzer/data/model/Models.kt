@@ -42,12 +42,11 @@ data class Playlist(
     val name: String,
     val creationDate: Long = Instant.now().toEpochMilli(),
     val lastUpdated: Long = creationDate,
-    val coverTrackId: String? = null,
-    val trackIds: List<String> = emptyList()
+    val coverTrackUri: String? = null,
+    val fileUris: List<String> = emptyList()
 )
 
 @Serializable
 data class PlaylistsDocument(
     val playlists: List<Playlist> = emptyList()
 )
-

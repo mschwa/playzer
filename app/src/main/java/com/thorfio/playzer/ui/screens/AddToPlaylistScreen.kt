@@ -22,11 +22,21 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
     val playlistStore = ServiceLocator.playlistStore
+    val musicRepo = ServiceLocator.musicRepository
     val playlists by playlistStore.playlists.collectAsState()
+    val tracksState = musicRepo.tracks.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Convert track IDs to file URIs
+    val fileUris = remember(trackIds, tracksState.value) {
+        tracksState.value
+            .filter { it.id in trackIds }
+            .map { it.fileUri }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -46,13 +56,13 @@ fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
                     ListItem(
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
                         headlineContent = { Text(p.name) },
-                        supportingContent = { Text("${p.trackIds.size} tracks") },
+                        supportingContent = { Text("${p.fileUris.size} tracks") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(rowColor)
                             .clickable {
-                                if (trackIds.isNotEmpty()) {
-                                    playlistStore.addTracks(p.id, trackIds)
+                                if (fileUris.isNotEmpty()) {
+                                    playlistStore.addTracks(p.id, fileUris)
                                     scope.launch {
                                         snackbarHostState.showSnackbar("Added to ${p.name}")
                                     }

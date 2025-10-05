@@ -1,9 +1,23 @@
 package com.thorfio.playzer.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -11,20 +25,51 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Playlist
@@ -32,33 +77,24 @@ import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.ui.components.TrackAlbumArt
 import com.thorfio.playzer.ui.navigation.RouteBuilder
 import com.thorfio.playzer.ui.navigation.Routes
-import com.thorfio.playzer.ui.theme.Charcoal
 import com.thorfio.playzer.ui.theme.DarkGrey
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.composed
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.*
-import androidx.compose.ui.zIndex
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistScreen(nav: NavController, playlistId: String) {
+
     val playlistStore = ServiceLocator.playlistStore
     val repo = ServiceLocator.musicRepository
     val playlistsState = playlistStore.playlists.collectAsState()
     val tracksState = repo.tracks.collectAsState()
     val playlist = playlistsState.value.firstOrNull { it.id == playlistId }
     val tracks: List<Track> = remember(playlist, tracksState.value) {
-        if (playlist == null) emptyList() else repo.tracksByIds(playlist.trackIds)
+        if (playlist == null) emptyList() else tracksState.value.filter { it.fileUri in (playlist.fileUris) }
     }
+
     var showRename by remember { mutableStateOf(false) }
     var renameValue by remember { mutableStateOf(playlist?.name ?: "") }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -100,25 +136,26 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                 },
                 onRemove = { trackId ->
                     val pl = playlist ?: return@TrackListingForPlaylist
-                    val idx = pl.trackIds.indexOf(trackId)
-                    val t = tracks.firstOrNull { it.id == trackId } ?: return@TrackListingForPlaylist
-                    lastRemoved = t to idx
-                    playlistStore.removeTrack(pl.id, trackId)
-                    // If cover removed, update cover to next remaining first track
-                    if (pl.coverTrackId == trackId) {
-                        val newCover = pl.trackIds.firstOrNull { it != trackId }
+                    val track = tracks.firstOrNull { it.id == trackId } ?: return@TrackListingForPlaylist
+                    val fileUri = track.fileUri
+                    val idx = pl.fileUris.indexOf(fileUri)
+                    lastRemoved = track to idx
+                    playlistStore.removeTrack(pl.id, fileUri)
+                    // If cover removed, update cover to next remaining fileUri
+                    if (pl.coverTrackUri == fileUri) {
+                        val newCover = pl.fileUris.firstOrNull { it != fileUri }
                         playlistStore.setCover(pl.id, newCover)
                     }
                     scope.launch {
                         val res = snackbarHostState.showSnackbar(
-                            message = "Removed '${t.title}'",
+                            message = "Removed '${track.title}'",
                             actionLabel = "UNDO",
                             withDismissAction = true
                         )
                         if (res == SnackbarResult.ActionPerformed) {
                             lastRemoved?.let { (tr, originalIndex) ->
-                                playlistStore.insertTrackAt(pl.id, tr.id, originalIndex)
-                                if (pl.coverTrackId == null) playlistStore.setCover(pl.id, tr.id)
+                                playlistStore.insertTrackAt(pl.id, tr.fileUri, originalIndex)
+                                if (pl.coverTrackUri == null) playlistStore.setCover(pl.id, tr.fileUri)
                             }
                         }
                         lastRemoved = null
@@ -163,7 +200,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
 @Composable
 private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>, nav: NavController) {
     // Get a random track for the background if tracks are available, otherwise use the cover track
-    val coverTrack = tracks.firstOrNull { it.id == playlist?.coverTrackId } ?: tracks.firstOrNull()
+    val coverTrack = tracks.firstOrNull { it.fileUri == playlist?.coverTrackUri } ?: tracks.firstOrNull()
     val randomTrack = remember(tracks) {
         if (tracks.isNotEmpty()) tracks.random() else null
     }
@@ -455,8 +492,8 @@ private fun TrackListingForPlaylist(
 
                                         // Update the playlist store with the new order
                                         scope.launch {
-                                            val trackIds = newList.map { it.id }
-                                            playlistStore.updateTrackOrder(playlistId, trackIds)
+                                            val fileUris = newList.map { it.fileUri }
+                                            playlistStore.updateTrackOrder(playlistId, fileUris)
                                         }
                                     }
 

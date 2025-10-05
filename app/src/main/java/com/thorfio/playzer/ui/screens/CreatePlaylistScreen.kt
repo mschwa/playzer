@@ -17,10 +17,23 @@ import kotlinx.coroutines.launch
 @Composable
 fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
     val playlistStore = ServiceLocator.playlistStore
+    val musicRepo = ServiceLocator.musicRepository
+    val tracksState = musicRepo.tracks.collectAsState()
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(TextFieldValue("")) }
     var creating by remember { mutableStateOf(false) }
     val canCreate = name.text.isNotBlank() && !creating
+
+    // Convert track IDs to file URIs
+    val fileUris = remember(prefilledTrackIds, tracksState.value) {
+        if (prefilledTrackIds.isEmpty() || prefilledTrackIds.firstOrNull() == "_") {
+            emptyList()
+        } else {
+            tracksState.value
+                .filter { it.id in prefilledTrackIds }
+                .map { it.fileUri }
+        }
+    }
 
     Scaffold(topBar = {
         TopAppBar(
@@ -37,15 +50,15 @@ fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
                 modifier = Modifier.fillMaxWidth()
             )
             if (prefilledTrackIds.isNotEmpty()) {
-                AssistChip(onClick = {}, label = { Text("Will include ${prefilledTrackIds.size} track(s)") })
+                AssistChip(onClick = {}, label = { Text("Will include ${fileUris.size} track(s)") })
             }
             Button(
                 onClick = {
                     creating = true
                     scope.launch {
-                        val created = if (prefilledTrackIds.isEmpty() || prefilledTrackIds.firstOrNull() == "_") {
+                        val created = if (fileUris.isEmpty()) {
                             playlistStore.createReturning(name.text.trim())
-                        } else playlistStore.createAndAdd(name.text.trim(), prefilledTrackIds)
+                        } else playlistStore.createAndAdd(name.text.trim(), fileUris)
                         nav.popBackStack()
                         nav.navigate(Routes.PLAYLIST.replace("{playlistId}", created.id))
                     }
@@ -56,4 +69,3 @@ fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
         }
     }
 }
-

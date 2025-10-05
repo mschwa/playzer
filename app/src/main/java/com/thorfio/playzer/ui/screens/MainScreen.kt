@@ -245,7 +245,7 @@ fun MainScreen(
                     playlists = playlists,
                     nav = nav,
                     onPlay = { pl ->
-                        val list = repo.tracksByIds(pl.trackIds)
+                        val list = repo.tracksByIds(pl.fileUris)
                         if (list.isNotEmpty()) { playback.loadAndPlay(list); nav.navigate(Routes.PLAYER) }
                     },
                     onRename = { pl -> renamingPlaylistId = pl.id; renamePlaylistValue = pl.name },
@@ -611,7 +611,7 @@ private fun PlaylistsPanel(
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
                 Column(Modifier.weight(1f).clickable { onOpen(p) }) {
                     Text(p.name, maxLines = 1)
-                    Text("${p.trackIds.size} tracks", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${p.fileUris.size} tracks", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box { // menu anchor
                     IconButton(onClick = { menuForId = p.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Playlist Options") }
