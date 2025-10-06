@@ -53,6 +53,9 @@ fun AlbumScreen(nav: NavController, albumId: String) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
 
+    // State for track menu
+    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+
     // State for album art
     var albumArt by remember { mutableStateOf<ImageBitmap?>(null) }
 
@@ -169,23 +172,59 @@ fun AlbumScreen(nav: NavController, albumId: String) {
 
             HorizontalDivider()
 
-            // Using the reusable track list component
-            TrackListComponent(
-                tracks = tracks,
-                onPlay = { track, index ->
-                    ServiceLocator.playbackController.loadAndPlay(tracks, index)
-                    nav.navigate(Routes.PLAYER)
-                },
-                onAddToPlaylist = { track ->
-                    nav.navigate(RouteBuilder.addToPlaylist(listOf(track.id)))
-                },
-                onDeleteTrack = { track ->
-                    trackToDelete = track
-                    showDeleteDialog = true
-                },
-                rowHeight = 72.dp,
-                useAlternateBackground = true
-            )
+            // Track list using LazyColumn
+            LazyColumn {
+                itemsIndexed(tracks) { index, track ->
+                    TrackListComponent(
+                        track = track,
+                        index = index,
+                        isSelected = false, // Not in selection mode for album screen
+                        isSelectionMode = false,
+                        rowHeight = 72.dp,
+                        onClick = {
+                            ServiceLocator.playbackController.loadAndPlay(tracks, index)
+                            nav.navigate(Routes.PLAYER)
+                        },
+                        onLongClick = { /* No-op */ },
+                        onMenuClick = { menuForTrackId = track.id },
+                        menuContent = {
+                            DropdownMenu(
+                                expanded = menuForTrackId == track.id,
+                                onDismissRequest = { menuForTrackId = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Play") },
+                                    onClick = {
+                                        ServiceLocator.playbackController.loadAndPlay(tracks, index)
+                                        nav.navigate(Routes.PLAYER)
+                                        menuForTrackId = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Add to Playlist") },
+                                    onClick = {
+                                        nav.navigate(RouteBuilder.addToPlaylist(listOf(track.id)))
+                                        menuForTrackId = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete") },
+                                    onClick = {
+                                        trackToDelete = track
+                                        showDeleteDialog = true
+                                        menuForTrackId = null
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
+
+                item {
+                    // Add some space at the bottom for better UX
+                    Spacer(Modifier.height(80.dp))
+                }
+            }
 
             // Delete confirmation dialog
             if (showDeleteDialog && trackToDelete != null) {

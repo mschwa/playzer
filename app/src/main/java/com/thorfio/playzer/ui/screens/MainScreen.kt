@@ -6,12 +6,24 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -19,15 +31,38 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -35,13 +70,13 @@ import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.ui.components.TrackAlbumArt
-import com.thorfio.playzer.ui.navigation.Routes
+import com.thorfio.playzer.ui.components.TrackListComponent
 import com.thorfio.playzer.ui.navigation.RouteBuilder
+import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.theme.Charcoal
 import com.thorfio.playzer.ui.theme.DarkGrey
-import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 private enum class MainTab { TRACKS, PLAYLISTS, ALBUMS, ARTISTS }
 private enum class TrackSortField { TITLE, DATE_ADDED, ALBUM, ARTIST }
@@ -243,7 +278,6 @@ fun MainScreen(
                 }
                 MainTab.PLAYLISTS -> PlaylistsPanel(
                     playlists = playlists,
-                    nav = nav,
                     onPlay = { pl ->
                         val list = repo.tracksByFileUris(pl.fileUris)
                         if (list.isNotEmpty()) { playback.loadAndPlay(list); nav.navigate(Routes.PLAYER) }
@@ -523,70 +557,32 @@ private fun TrackList(
         }
         itemsIndexed(tracks) { index, track ->
             val selected = selectedIds.contains(track.id)
-            val selectBg = MaterialTheme.colorScheme.primaryContainer
-            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
-            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
 
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .height(rowHeight)
-                    .background(if (selected) selectBg else rowColor)
-                    .combinedClickable(
-                        onClick = { onRowClick(track) },
-                        onLongClick = { if (!selectionMode) onEnterSelection(track) else onToggleSelect(track) }
-                    )
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (selectionMode) {
-                    Icon(
-                        imageVector = if (selected) Icons.Filled.Check else Icons.Filled.MoreVert,
-                        contentDescription = if (selected) "Selected" else "Not selected",
-                        tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                }
-                TrackAlbumArt(track = track, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artistName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                if (!selectionMode) {
-                    Text(
-                        formatTime(track.durationMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Box {
-                        IconButton(onClick = { menuForTrackId = track.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Track Options") }
-                        DropdownMenu(expanded = menuForTrackId == track.id, onDismissRequest = { if (menuForTrackId == track.id) menuForTrackId = null }) {
-                            DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(track); menuForTrackId = null })
-                            DropdownMenuItem(text = { Text("Add to Playlist") }, onClick = { onAddToPlaylist(track); menuForTrackId = null })
-                            DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(track); menuForTrackId = null })
-                        }
+            TrackListComponent(
+                track = track,
+                index = index,
+                isSelected = selected,
+                isSelectionMode = selectionMode,
+                rowHeight = rowHeight,
+                onClick = { onRowClick(track) },
+                onLongClick = { if (!selectionMode) onEnterSelection(track) else onToggleSelect(track) },
+                onMenuClick = { menuForTrackId = track.id },
+                menuContent = {
+                    DropdownMenu(expanded = menuForTrackId == track.id, onDismissRequest = { if (menuForTrackId == track.id) menuForTrackId = null }) {
+                        DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(track); menuForTrackId = null })
+                        DropdownMenuItem(text = { Text("Add to Playlist") }, onClick = { onAddToPlaylist(track); menuForTrackId = null })
+                        DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(track); menuForTrackId = null })
                     }
                 }
-            }
-            HorizontalDivider()
+            )
         }
         item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
-// Helper for time formatting (duplicate of player; localized here)
-private fun formatTime(ms: Long): String {
-    val totalSec = ms / 1000
-    val m = totalSec / 60
-    val s = totalSec % 60
-    return "%d:%02d".format(m, s)
-}
-
 @Composable
 private fun PlaylistsPanel(
     playlists: List<com.thorfio.playzer.data.model.Playlist>,
-    nav: NavController,
     onPlay: (com.thorfio.playzer.data.model.Playlist) -> Unit,
     onRename: (com.thorfio.playzer.data.model.Playlist) -> Unit,
     onDelete: (com.thorfio.playzer.data.model.Playlist) -> Unit,
@@ -628,7 +624,6 @@ private fun PlaylistsPanel(
     }
 }
 
-// NEW composable
 @Composable
 private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder, onChangeField: (TrackSortField) -> Unit, onToggleOrder: () -> Unit) {
     Surface(tonalElevation = 2.dp, color = Charcoal) {
@@ -659,37 +654,12 @@ private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder
                     onDismissRequest = { menu = false },
                     offset = androidx.compose.ui.unit.DpOffset(0.dp, 0.dp) // Default position (right-aligned with the icon)
                 ) {
-                    TrackSortField.values().forEach { f ->
+                    TrackSortField.entries.forEach { f ->
                         DropdownMenuItem(text = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }, onClick = { onChangeField(f); menu = false })
                     }
                     HorizontalDivider()
                     DropdownMenuItem(text = { Text(if (order == SortOrder.ASC) "Descending" else "Ascending") }, onClick = { onToggleOrder(); menu = false })
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SimpleSortHeader(label: String, asc: Boolean, onToggle: () -> Unit) {
-    Surface(tonalElevation = 2.dp, color = Charcoal) {
-        Row(
-            Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween // This ensures proper spacing between left and right content
-        ) {
-            // Left side: Album/Artist count label
-            Text(label, style = MaterialTheme.typography.labelLarge)
-
-            // Right side: Sort icon
-            IconButton(
-                onClick = onToggle,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Sort,
-                    contentDescription = "Toggle sort order (currently ${if (asc) "Ascending" else "Descending"})"
-                )
             }
         }
     }
@@ -767,6 +737,31 @@ private fun ArtistsPanel(
                 }
             }
             HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+private fun SimpleSortHeader(label: String, asc: Boolean, onToggle: () -> Unit) {
+    Surface(tonalElevation = 2.dp, color = Charcoal) {
+        Row(
+            Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween // This ensures proper spacing between left and right content
+        ) {
+            // Left side: Album/Artist count label
+            Text(label, style = MaterialTheme.typography.labelLarge)
+
+            // Right side: Sort icon
+            IconButton(
+                onClick = onToggle,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Sort,
+                    contentDescription = "Toggle sort order (currently ${if (asc) "Ascending" else "Descending"})"
+                )
+            }
         }
     }
 }

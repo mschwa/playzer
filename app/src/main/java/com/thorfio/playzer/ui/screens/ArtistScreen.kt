@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,6 +45,13 @@ fun ArtistScreen(nav: NavController, artistId: String) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
 
+    // State for track menu
+    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+
+    // State for selection mode
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(setOf<String>()) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,24 +86,78 @@ fun ArtistScreen(nav: NavController, artistId: String) {
 
             HorizontalDivider()
 
-            // Use the reusable track list component
-            TrackListComponent(
-                tracks = tracks,
-                onPlay = { track, index ->
-                    ServiceLocator.playbackController.loadAndPlay(tracks, index)
-                    nav.navigate(Routes.PLAYER)
-                },
-                onAddToPlaylist = { track ->
-                    nav.navigate(RouteBuilder.addToPlaylist(listOf(track.id)))
-                },
-                onDeleteTrack = { track ->
-                    trackToDelete = track
-                    showDeleteDialog = true
-                },
-                rowHeight = 72.dp,
-                showAlbumName = true, // Show album name instead of artist name
-                useAlternateBackground = true
-            )
+            // Track list using LazyColumn
+            LazyColumn {
+                itemsIndexed(tracks) { index, track ->
+                    val selected = selectedIds.contains(track.id)
+
+                    TrackListComponent(
+                        track = track,
+                        index = index,
+                        isSelected = selected,
+                        isSelectionMode = selectionMode,
+                        rowHeight = 72.dp,
+                        onClick = {
+                            ServiceLocator.playbackController.loadAndPlay(tracks, index)
+                            nav.navigate(Routes.PLAYER)
+                        },
+                        onLongClick = {
+                            if (!selectionMode) {
+                                selectionMode = true
+                                selectedIds = setOf(track.id)
+                            } else {
+                                // Toggle selection of this track
+                                selectedIds = if (selected) {
+                                    selectedIds - track.id
+                                } else {
+                                    selectedIds + track.id
+                                }
+
+                                // If nothing is selected, exit selection mode
+                                if (selectedIds.isEmpty()) {
+                                    selectionMode = false
+                                }
+                            }
+                        },
+                        onMenuClick = { menuForTrackId = track.id },
+                        menuContent = {
+                            DropdownMenu(
+                                expanded = menuForTrackId == track.id,
+                                onDismissRequest = { menuForTrackId = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Play") },
+                                    onClick = {
+                                        ServiceLocator.playbackController.loadAndPlay(tracks, index)
+                                        nav.navigate(Routes.PLAYER)
+                                        menuForTrackId = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Add to Playlist") },
+                                    onClick = {
+                                        nav.navigate(RouteBuilder.addToPlaylist(listOf(track.id)))
+                                        menuForTrackId = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete") },
+                                    onClick = {
+                                        trackToDelete = track
+                                        showDeleteDialog = true
+                                        menuForTrackId = null
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
+
+                item {
+                    // Add some space at the bottom for better UX
+                    Spacer(Modifier.height(80.dp))
+                }
+            }
         }
 
         // Delete confirmation dialog
