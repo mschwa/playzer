@@ -245,7 +245,7 @@ fun MainScreen(
                     playlists = playlists,
                     nav = nav,
                     onPlay = { pl ->
-                        val list = repo.tracksByIds(pl.fileUris)
+                        val list = repo.tracksByFileUris(pl.fileUris)
                         if (list.isNotEmpty()) { playback.loadAndPlay(list); nav.navigate(Routes.PLAYER) }
                     },
                     onRename = { pl -> renamingPlaylistId = pl.id; renamePlaylistValue = pl.name },

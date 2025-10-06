@@ -7,11 +7,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.data.queue.InternalQueue
 import com.thorfio.playzer.data.repo.MusicRepository
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class PlaybackController(
     context: Context,
@@ -34,10 +40,19 @@ class PlaybackController(
     // Position update job
     private var positionUpdateJob: Job? = null
 
+    // Save state periodically job
+    private var saveStateJob: Job? = null
+
     init {
         scope.launch {
             internalQueue.currentIndex.collect {
-                _currentTrack.value = internalQueue.currentTrack
+                val track = internalQueue.currentTrack
+                _currentTrack.value = track
+
+                // Update position when track changes
+                track?.let {
+                    _currentPositionMs.value = internalQueue.lastPosition.value
+                }
             }
         }
 
@@ -52,8 +67,30 @@ class PlaybackController(
                 super.onIsPlayingChanged(isPlaying)
                 _isPlaying.value = isPlaying
                 updatePositionTracking()
+                updateStateSaving(isPlaying)
             }
         })
+
+        // Set the player position from persisted state on initialization
+        restorePlaybackState()
+
+        // Start periodic state saving
+        updateStateSaving(false)
+    }
+
+    private fun restorePlaybackState() {
+        // Queue is already loaded from disk by InternalQueue init
+        val currentTrack = internalQueue.currentTrack
+        val lastPosition = internalQueue.lastPosition.value
+
+        if (currentTrack != null) {
+            // Prepare the player with the queue
+            rebuildPlayerQueue()
+            // Seek to the last position
+            seekTo(lastPosition)
+            // Set current track
+            _currentTrack.value = currentTrack
+        }
     }
 
     // Start or stop position tracking based on playback state
@@ -63,7 +100,8 @@ class PlaybackController(
         if (player.isPlaying) {
             positionUpdateJob = scope.launch {
                 while (isActive) {
-                    _currentPositionMs.value = player.currentPosition
+                    val position = player.currentPosition
+                    _currentPositionMs.value = position
                     delay(100) // Update position 10 times per second
                 }
             }
@@ -73,12 +111,35 @@ class PlaybackController(
         }
     }
 
-    fun loadAndPlay(tracks: List<Track>, startAt: Int = 0) {
+    // Start or stop periodic state saving
+    private fun updateStateSaving(isPlaying: Boolean) {
+        saveStateJob?.cancel()
+
+        // Save state immediately when paused
+        if (!isPlaying) {
+            internalQueue.updatePosition(_currentPositionMs.value)
+        }
+
+        // Set up periodic saving while playing
+        saveStateJob = scope.launch {
+            while (isActive) {
+                internalQueue.updatePosition(_currentPositionMs.value)
+                delay(5000) // Save every 5 seconds
+            }
+        }
+    }
+
+    // New method to load a track without automatically playing it
+    fun loadTrack(tracks: List<Track>, startAt: Int = 0, autoPlay: Boolean = true) {
         internalQueue.load(tracks, startAt)
         _currentTrack.value = internalQueue.currentTrack
         rebuildPlayerQueue()
         player.prepare()
-        player.playWhenReady = true
+        player.playWhenReady = autoPlay
+    }
+
+    fun loadAndPlay(tracks: List<Track>, startAt: Int = 0) {
+        loadTrack(tracks, startAt, true)
     }
 
     fun togglePlayPause() {
@@ -102,6 +163,9 @@ class PlaybackController(
     fun seekTo(positionMs: Long) {
         player.seekTo(positionMs)
         _currentPositionMs.value = positionMs
+
+        // Update position in internalQueue
+        internalQueue.updatePosition(positionMs)
     }
 
     private fun rebuildPlayerQueue() {
@@ -114,7 +178,11 @@ class PlaybackController(
     }
 
     fun release() {
+        // Save position before releasing
+        internalQueue.updatePosition(_currentPositionMs.value)
+
         positionUpdateJob?.cancel()
+        saveStateJob?.cancel()
         player.release()
         scope.cancel()
     }

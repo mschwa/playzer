@@ -94,6 +94,9 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.serialization.json)
 
+    // Gson for JSON serialization/deserialization
+    implementation("com.google.code.gson:gson:2.10.1")
+
     // Tooling & testing
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

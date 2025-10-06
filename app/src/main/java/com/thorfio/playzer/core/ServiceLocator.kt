@@ -15,8 +15,10 @@ object ServiceLocator {
 
     val musicRepository: MusicRepository by lazy { MusicRepository() }
     val playlistStore: PlaylistStore by lazy { PlaylistStore(appContext) }
-    val internalQueue: InternalQueue by lazy { InternalQueue() }
-    val playbackController: PlaybackController by lazy { PlaybackController(appContext, musicRepository, internalQueue) }
+    val internalQueue: InternalQueue by lazy { InternalQueue(appContext) }
+    val playbackController: PlaybackController by lazy {
+        PlaybackController(appContext, musicRepository, internalQueue)
+    }
     val themePreferences: ThemePreferencesRepository by lazy { ThemePreferencesRepository(appContext) }
     val appPreferencesRepository: AppPreferencesRepository by lazy { AppPreferencesRepository(appContext) }
 

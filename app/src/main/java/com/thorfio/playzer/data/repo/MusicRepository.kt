@@ -27,6 +27,12 @@ class MusicRepository {
     private var hasLoadedData = false
 
     fun tracksByIds(ids: List<String>) = _tracks.value.filter { it.id in ids }
+
+    /**
+     * Get tracks by their file URIs
+     */
+    fun tracksByFileUris(fileUris: List<String>) = _tracks.value.filter { it.fileUri in fileUris }
+
     fun album(id: String) = _albums.value.firstOrNull { it.id == id }
     fun artist(id: String) = _artists.value.firstOrNull { it.id == id }
 
