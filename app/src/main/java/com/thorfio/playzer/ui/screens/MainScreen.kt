@@ -330,7 +330,7 @@ fun MainScreen(
                         // Create new playlist directly from current selection
                         val sel = selectedIds.toList()
                         selectionMode = false
-                        val route = com.thorfio.playzer.ui.navigation.RouteBuilder.createPlaylist(sel)
+                        val route = RouteBuilder.createPlaylist(sel)
                         nav.navigate(route) {
                             launchSingleTop = true
                             popUpTo(Routes.MAIN) { inclusive = false; saveState = true }
@@ -592,7 +592,7 @@ private fun PlaylistsPanel(
     onDelete: (com.thorfio.playzer.data.model.Playlist) -> Unit,
     onOpen: (com.thorfio.playzer.data.model.Playlist) -> Unit
 ) {
-    val repo = ServiceLocator.musicRepository
+    ServiceLocator.musicRepository
     var menuForId by remember { mutableStateOf<String?>(null) }
     LazyColumn(Modifier.fillMaxSize()) {
         if (playlists.isEmpty()) {

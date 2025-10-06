@@ -141,7 +141,7 @@ class PlaylistStore(private val context: Context) {
                 val currentIdx = pl.fileUris.indexOf(fileUri)
                 if (currentIdx == -1) return@map pl
                 val mutable = pl.fileUris.toMutableList()
-                val maxDest = mutable.size - 1
+                mutable.size - 1
                 val targetRaw = toIndex.coerceIn(0, mutable.size) // allow == size for append
                 if (currentIdx != targetRaw) {
                     val item = mutable.removeAt(currentIdx)

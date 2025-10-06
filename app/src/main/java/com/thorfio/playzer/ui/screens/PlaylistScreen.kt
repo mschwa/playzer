@@ -596,7 +596,6 @@ private fun Modifier.dragTarget(
     onDragFinished: (fromIndex: Int, toIndex: Int) -> Unit
 ) = composed {
     val isDragging = dragState.value?.trackId == trackId
-    val elevation by animateFloatAsState(if (isDragging) 8f else 0f, label = "elevation")
     val scale by animateFloatAsState(if (isDragging) 1.1f else 1.0f, label = "scale")
     val alpha by animateFloatAsState(if (isDragging) 0.9f else 1f, label = "alpha")
 

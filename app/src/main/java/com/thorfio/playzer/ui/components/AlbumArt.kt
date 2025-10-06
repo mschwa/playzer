@@ -93,7 +93,7 @@ fun TrackAlbumArt(
 ) {
     val context = LocalContext.current
     val repo = ServiceLocator.musicRepository
-    val scope = rememberCoroutineScope()
+    rememberCoroutineScope()
 
     // Get fileUri from track or from album's first track
     val fileUri: String? = when {
