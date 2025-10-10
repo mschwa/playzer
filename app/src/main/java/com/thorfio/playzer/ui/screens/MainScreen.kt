@@ -24,11 +24,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
+import com.thorfio.playzer.data.model.Playlist
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.screens.main.AlbumSortOrder
@@ -42,11 +44,12 @@ import com.thorfio.playzer.ui.screens.main.DeletePlaylistDialog
 import com.thorfio.playzer.ui.screens.main.MainTab
 import com.thorfio.playzer.ui.screens.main.MainTopAppBar
 import com.thorfio.playzer.ui.screens.main.MinimizedPlayerBar
+import com.thorfio.playzer.ui.screens.main.PlayListSortOrder
 import com.thorfio.playzer.ui.screens.main.PlaylistsPanel
 import com.thorfio.playzer.ui.screens.main.RenamePlaylistDialog
 import com.thorfio.playzer.ui.screens.main.SelectionToolbar
 import com.thorfio.playzer.ui.screens.main.SimpleSortHeader
-import com.thorfio.playzer.ui.screens.main.SortOrder
+import com.thorfio.playzer.ui.screens.main.TrackSortOrder
 import com.thorfio.playzer.ui.screens.main.TrackDeletionDialog
 import com.thorfio.playzer.ui.screens.main.TrackListPanel
 import com.thorfio.playzer.ui.screens.main.TrackSortField
@@ -80,7 +83,8 @@ fun MainScreen(
 
     // Sort states
     var trackSortField by remember { mutableStateOf(TrackSortField.TITLE) }
-    var trackSortOrder by remember { mutableStateOf(SortOrder.ASC) }
+    var trackSortOrder by remember { mutableStateOf(TrackSortOrder.ASC) }
+    var playlistSortOrder by remember { mutableStateOf(PlayListSortOrder.ASC) }
     var albumSortOrder by remember { mutableStateOf(AlbumSortOrder.ASC) }
     var artistSortOrder by remember { mutableStateOf(ArtistSortOrder.ASC) }
 
@@ -102,7 +106,6 @@ fun MainScreen(
     var showDeleteArtistDialog by remember { mutableStateOf(false) }
     var showDeleteAlbumDialog by remember { mutableStateOf(false) }
 
-
     // UI metrics
     val configuration = LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp
@@ -114,7 +117,7 @@ fun MainScreen(
     // Snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Helper functions
+    //region Helper functions
     val updateTab: (MainTab) -> Unit = { tab ->
         if (currentTab != tab) {
             currentTab = tab
@@ -139,20 +142,23 @@ fun MainScreen(
             selectionMode = true
         }
     }
+    //endregion
 
     Scaffold(
         floatingActionButton = {
             when (currentTab) {
                 MainTab.TRACKS -> {
                     FloatingActionButton(
-                        onClick = { if (tracks.isNotEmpty()) playback.loadAndPlay(tracks.shuffled()) }
+                        onClick = { if (tracks.isNotEmpty()) playback.loadAndPlay(tracks.shuffled()) },
+                        containerColor = Color(0xFFB71C1C)
                     ) {
                         Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle")
                     }
                 }
                 MainTab.PLAYLISTS -> {
                     FloatingActionButton(
-                        onClick = { showCreatePlaylistDialog = true }
+                        onClick = { showCreatePlaylistDialog = true },
+                        containerColor = Color(0xFFB71C1C)
                     ) {
                         Text("+")
                     }
@@ -199,7 +205,7 @@ fun MainScreen(
                             TrackSortField.ALBUM -> tracks.sortedBy { it.albumTitle.lowercase() }
                             TrackSortField.ARTIST -> tracks.sortedBy { it.artistName.lowercase() }
                         }
-                        if (trackSortOrder == SortOrder.ASC) base else base.reversed()
+                        if (trackSortOrder == TrackSortOrder.ASC) base else base.reversed()
                     }
 
                     TrackListPanel(
@@ -229,8 +235,8 @@ fun MainScreen(
                                 order = trackSortOrder,
                                 onChangeField = { trackSortField = it },
                                 onToggleOrder = {
-                                    trackSortOrder = if (trackSortOrder == SortOrder.ASC)
-                                        SortOrder.DESC else SortOrder.ASC
+                                    trackSortOrder = if (trackSortOrder == TrackSortOrder.ASC)
+                                        TrackSortOrder.DESC else TrackSortOrder.ASC
                                 }
                             )
                         }
@@ -238,8 +244,21 @@ fun MainScreen(
                 }
 
                 MainTab.PLAYLISTS -> {
+                    val sorted = remember(playlists, playlistSortOrder) {
+                        val base = playlists.sortedBy { it.name.lowercase() }
+                        if (playlistSortOrder == PlayListSortOrder.ASC) base else base.reversed()
+                    }
                     PlaylistsPanel(
-                        playlists = playlists,
+                        playlists = sorted,
+                        sortControls = {
+                            SimpleSortHeader(
+                                label = "${playlists.size} Playlists",
+                                asc = playlistSortOrder == PlayListSortOrder.ASC
+                            ) {
+                                playlistSortOrder = if (playlistSortOrder == PlayListSortOrder.ASC)
+                                    PlayListSortOrder.DESC else PlayListSortOrder.ASC
+                            }
+                        },
                         onPlay = { pl ->
                             val list = repo.tracksByFileUris(pl.fileUris)
                             if (list.isNotEmpty()) {
@@ -261,7 +280,6 @@ fun MainScreen(
                         val base = albums.sortedBy { it.title.lowercase() }
                         if (albumSortOrder == AlbumSortOrder.ASC) base else base.reversed()
                     }
-
                     AlbumsPanel(
                         albums = sorted,
                         nav = nav,

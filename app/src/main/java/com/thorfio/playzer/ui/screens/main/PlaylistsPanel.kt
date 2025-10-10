@@ -37,6 +37,7 @@ import com.thorfio.playzer.ui.theme.DarkGrey
 @Composable
 fun PlaylistsPanel(
     playlists: List<Playlist>,
+    sortControls: (@Composable () -> Unit)? = null,
     onPlay: (Playlist) -> Unit,
     onRename: (Playlist) -> Unit,
     onDelete: (Playlist) -> Unit,
@@ -44,6 +45,7 @@ fun PlaylistsPanel(
 ) {
     var menuForId by remember { mutableStateOf<String?>(null) }
     LazyColumn(Modifier.fillMaxSize()) {
+        stickyHeader { if (sortControls != null) sortControls() }
         if (playlists.isEmpty()) {
             item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No playlists yet") } }
         }

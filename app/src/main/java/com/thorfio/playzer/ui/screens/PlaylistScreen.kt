@@ -112,7 +112,8 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                         val shuffledTracks = tracks.shuffled()
                         ServiceLocator.playbackService.loadAndPlay(shuffledTracks)
                         nav.navigate(Routes.PLAYER)
-                    }
+                    },
+                    containerColor = Color(0xFFB71C1C)
                 ) {
                     Icon(
                         Icons.Default.Shuffle,

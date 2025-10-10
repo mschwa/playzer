@@ -25,15 +25,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-//import com.thorfio.playzer.ui.screens.SortOrder
-//import com.thorfio.playzer.ui.screens.TrackSortField
 import com.thorfio.playzer.ui.theme.Charcoal
 
 @Composable
 fun TracksSortHeader(
     count: Int,
     field: TrackSortField,
-    order: SortOrder,
+    order: TrackSortOrder,
     onChangeField: (TrackSortField) -> Unit,
     onToggleOrder: () -> Unit
 ) {
@@ -55,7 +53,7 @@ fun TracksSortHeader(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Sort,
-                        contentDescription = "Sort by ${field.name.lowercase().replaceFirstChar { it.uppercase() }} (${if (order==SortOrder.ASC) "Ascending" else "Descending"})"
+                        contentDescription = "Sort by ${field.name.lowercase().replaceFirstChar { it.uppercase() }} (${if (order==TrackSortOrder.ASC) "Ascending" else "Descending"})"
                     )
                 }
 
@@ -73,7 +71,7 @@ fun TracksSortHeader(
                     }
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text(if (order == SortOrder.ASC) "Descending" else "Ascending") },
+                        text = { Text(if (order == TrackSortOrder.ASC) "Descending" else "Ascending") },
                         onClick = { onToggleOrder(); menu = false }
                     )
                 }

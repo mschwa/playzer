@@ -13,7 +13,12 @@ enum class TrackSortField { TITLE, DATE_ADDED, ALBUM, ARTIST }
 /**
  * Enum defining the general sort order (ascending or descending)
  */
-enum class SortOrder { ASC, DESC }
+enum class TrackSortOrder { ASC, DESC }
+
+/**
+ * Enum defining the sort order for playlists
+ */
+enum class PlayListSortOrder { ASC, DESC }
 
 /**
  * Enum defining the sort order for albums
