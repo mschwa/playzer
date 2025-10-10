@@ -46,7 +46,7 @@ fun PlayerScreen(nav: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Now Playing") },
+                title = { Text("") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -81,11 +81,13 @@ fun PlayerScreen(nav: NavController) {
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween // This ensures content is distributed across the entire height
+            verticalArrangement = Arrangement.spacedBy(16.dp) // Using spacedBy instead of SpaceBetween for more control
         ) {
-            // Top section
-            Column(Modifier.fillMaxWidth()) {
-                Spacer(Modifier.height(60.dp))
+            Spacer(Modifier.height(10.dp))
+
+            // Top section - album art
+            Column(Modifier.fillMaxWidth().weight(1f)) { // Using weight to give album art section flexible space
+                Spacer(Modifier.height(20.dp)) // Reduced space at top
 
                 // Album art section with proper cover art display
                 Box(
@@ -116,14 +118,14 @@ fun PlayerScreen(nav: NavController) {
                 }
             }
 
-            // Middle section - controls
+            // Control section - contains both player controls and track info
             Column(Modifier.fillMaxWidth()) {
                 // Play controls row with equalizer on left and volume on right
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween, // Space between for left/right alignment
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Left side - Equalizer
@@ -197,11 +199,11 @@ fun PlayerScreen(nav: NavController) {
                     }
                 }
 
-                Spacer(Modifier.height(8.dp)) // Reduced spacing
+                Spacer(Modifier.height(8.dp))
 
                 // Seekbar - more compact
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp), // Add small horizontal padding
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(formatTime(displayPositionMs), style = MaterialTheme.typography.labelSmall)
@@ -227,27 +229,32 @@ fun PlayerScreen(nav: NavController) {
                     )
                     Text(formatTime(track?.durationMs ?: 0L), style = MaterialTheme.typography.labelSmall)
                 }
-            }
 
-            // Bottom section - track info
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp), // Reduced bottom padding
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center // Add compact vertical arrangement
-            ) {
-                Text(
-                    track?.title ?: "--",
-                    style = MaterialTheme.typography.titleMedium, // Changed from titleLarge to titleMedium
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    track?.artistName ?: "--",
-                    style = MaterialTheme.typography.bodySmall, // Changed from bodyMedium to bodySmall
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(Modifier.height(16.dp)) // Space between seekbar and track info
+
+                // Track info - Moved here from the bottom
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        track?.title ?: "--",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        track?.artistName ?: "--",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Replace the small 16dp spacer with a larger 100dp bottom padding
+                Spacer(Modifier.height(100.dp))
             }
         }
     }
