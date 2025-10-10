@@ -1,4 +1,4 @@
-package com.thorfio.playzer.data.playlist
+package com.thorfio.playzer.data.persistence
 
 import android.content.Context
 import com.thorfio.playzer.data.model.Playlist

@@ -1,12 +1,13 @@
 package com.thorfio.playzer.core
 
 import android.content.Context
-import com.thorfio.playzer.data.player.PlaybackController
-import com.thorfio.playzer.data.playlist.PlaylistStore
-import com.thorfio.playzer.data.prefs.AppPreferencesRepository
+import com.thorfio.playzer.services.PlaybackService
+import com.thorfio.playzer.services.TrackDeletionService
+import com.thorfio.playzer.data.persistence.PlaylistStore
+import com.thorfio.playzer.data.persistence.AppPreferencesRepository
 import com.thorfio.playzer.data.queue.InternalQueue
-import com.thorfio.playzer.data.repo.MusicRepository
-import com.thorfio.playzer.data.prefs.ThemePreferencesRepository
+import com.thorfio.playzer.data.persistence.MusicRepository
+import com.thorfio.playzer.data.persistence.ThemePreferencesRepository
 
 /** Simple manual DI / service locator. */
 object ServiceLocator {
@@ -16,8 +17,16 @@ object ServiceLocator {
     val musicRepository: MusicRepository by lazy { MusicRepository() }
     val playlistStore: PlaylistStore by lazy { PlaylistStore(appContext) }
     val internalQueue: InternalQueue by lazy { InternalQueue(appContext) }
-    val playbackController: PlaybackController by lazy {
-        PlaybackController(appContext, musicRepository, internalQueue)
+    val playbackService: PlaybackService by lazy {
+        PlaybackService(appContext, internalQueue)
+    }
+    val trackDeletionService: TrackDeletionService by lazy {
+        TrackDeletionService(
+            appContext,
+            internalQueue,
+            musicRepository,
+            playlistStore
+        )
     }
     val themePreferences: ThemePreferencesRepository by lazy { ThemePreferencesRepository(appContext) }
     val appPreferencesRepository: AppPreferencesRepository by lazy { AppPreferencesRepository(appContext) }

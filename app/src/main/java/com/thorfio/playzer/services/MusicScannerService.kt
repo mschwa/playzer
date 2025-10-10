@@ -1,4 +1,4 @@
-package com.thorfio.playzer.data.scanner
+package com.thorfio.playzer.services
 
 import android.app.Service
 import android.content.Context
@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import com.thorfio.playzer.core.ServiceLocator
+import com.thorfio.playzer.data.scanner.AudioFileScanner
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import java.time.Instant
@@ -63,17 +64,6 @@ class MusicScannerService : Service() {
             Log.i(TAG, "Forcing immediate music scan")
             val intent = Intent(context, MusicScannerService::class.java).apply {
                 action = ACTION_SCAN
-            }
-            context.startService(intent)
-        }
-
-        /**
-         * Cancels any ongoing scan
-         */
-        fun cancelScan(context: Context) {
-            Log.i(TAG, "Cancelling music scan")
-            val intent = Intent(context, MusicScannerService::class.java).apply {
-                action = ACTION_CANCEL
             }
             context.startService(intent)
         }

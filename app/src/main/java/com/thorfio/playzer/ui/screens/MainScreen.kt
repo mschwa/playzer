@@ -1,58 +1,21 @@
-@file:OptIn(ExperimentalFoundationApi::class)
-
 package com.thorfio.playzer.ui.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,29 +23,37 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
-import com.thorfio.playzer.ui.components.TrackAlbumArt
-import com.thorfio.playzer.ui.components.TrackListComponent
-import com.thorfio.playzer.ui.navigation.RouteBuilder
 import com.thorfio.playzer.ui.navigation.Routes
-import com.thorfio.playzer.ui.theme.Charcoal
+import com.thorfio.playzer.ui.screens.main.AlbumSortOrder
+import com.thorfio.playzer.ui.screens.main.AlbumsPanel
+import com.thorfio.playzer.ui.screens.main.ArtistSortOrder
+import com.thorfio.playzer.ui.screens.main.ArtistsPanel
+import com.thorfio.playzer.ui.screens.main.CreatePlaylistDialog
+import com.thorfio.playzer.ui.screens.main.DeleteAlbumDialog
+import com.thorfio.playzer.ui.screens.main.DeleteArtistDialog
+import com.thorfio.playzer.ui.screens.main.DeletePlaylistDialog
+import com.thorfio.playzer.ui.screens.main.MainTab
+import com.thorfio.playzer.ui.screens.main.MainTopAppBar
+import com.thorfio.playzer.ui.screens.main.MinimizedPlayerBar
+import com.thorfio.playzer.ui.screens.main.PlaylistsPanel
+import com.thorfio.playzer.ui.screens.main.RenamePlaylistDialog
+import com.thorfio.playzer.ui.screens.main.SelectionToolbar
+import com.thorfio.playzer.ui.screens.main.SimpleSortHeader
+import com.thorfio.playzer.ui.screens.main.SortOrder
+import com.thorfio.playzer.ui.screens.main.TrackDeletionDialog
+import com.thorfio.playzer.ui.screens.main.TrackListPanel
+import com.thorfio.playzer.ui.screens.main.TrackSortField
+import com.thorfio.playzer.ui.screens.main.TracksSortHeader
 import com.thorfio.playzer.ui.theme.DarkGrey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-
-private enum class MainTab { TRACKS, PLAYLISTS, ALBUMS, ARTISTS }
-private enum class TrackSortField { TITLE, DATE_ADDED, ALBUM, ARTIST }
-private enum class SortOrder { ASC, DESC }
-private enum class AlbumSortOrder { ASC, DESC }
-private enum class ArtistSortOrder { ASC, DESC }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,37 +62,23 @@ fun MainScreen(
     drawerState: DrawerState,
     scope: CoroutineScope
 ) {
+    // Services and repositories
     val repo = ServiceLocator.musicRepository
     val tracks by repo.tracks.collectAsState()
     val albums by repo.albums.collectAsState()
     val artists by repo.artists.collectAsState()
     val playlistStore = ServiceLocator.playlistStore
     val playlists by playlistStore.playlists.collectAsState()
-    val playback = ServiceLocator.playbackController
-
-    // Access preferences repository
+    val playback = ServiceLocator.playbackService
     val prefsRepo = ServiceLocator.appPreferencesRepository
 
-    // Read the saved tab index from preferences
+    // Tab state
     val savedTabIndex by prefsRepo.selectedMainTab.collectAsState(initial = 0)
-
-    // Initialize currentTab with the saved tab preference
     var currentTab by remember(savedTabIndex) {
         mutableStateOf(MainTab.entries.toTypedArray().getOrElse(savedTabIndex) { MainTab.TRACKS })
     }
 
-    // Function to update tab and save preference
-    val updateTab: (MainTab) -> Unit = { tab ->
-        if (currentTab != tab) {
-            currentTab = tab
-            // Save the tab selection to preferences
-            scope.launch {
-                prefsRepo.setSelectedMainTab(tab.ordinal)
-            }
-        }
-    }
-
-    // Sort state
+    // Sort states
     var trackSortField by remember { mutableStateOf(TrackSortField.TITLE) }
     var trackSortOrder by remember { mutableStateOf(SortOrder.ASC) }
     var albumSortOrder by remember { mutableStateOf(AlbumSortOrder.ASC) }
@@ -130,41 +87,60 @@ fun MainScreen(
     // Selection state
     var selectionMode by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<String>() }
+
+    // Dialog item pointers
+    var renamingPlaylistId by remember { mutableStateOf<String?>(null) }
+    var renamePlaylistValue by remember { mutableStateOf("") }
+    var deletingTrackId by remember { mutableStateOf<String?>(null) }
+    var deletingPlaylistId by remember { mutableStateOf<String?>(null) }
+    var deletingArtistId by remember { mutableStateOf<String?>(null) }
+    var deletingAlbumId by remember { mutableStateOf<String?>(null) }
+
+    // Control showing of dialogs
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var showDeleteTrackDialog by remember { mutableStateOf(false) }
+    var showDeleteArtistDialog by remember { mutableStateOf(false) }
+    var showDeleteAlbumDialog by remember { mutableStateOf(false) }
+
+
+    // UI metrics
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp
+    val headerRowHeight: Dp = (screenHeightDp / 24f).dp
+    val miniPlayerHeight: Dp = (screenHeightDp / 14f).dp
+    val tabRowHeight: Dp = (screenHeightDp / 24f).dp
+    val trackRowHeight: Dp = (screenHeightDp / 12f).dp
+
+    // Snackbar host state
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Helper functions
+    val updateTab: (MainTab) -> Unit = { tab ->
+        if (currentTab != tab) {
+            currentTab = tab
+            scope.launch {
+                prefsRepo.setSelectedMainTab(tab.ordinal)
+            }
+        }
+    }
+
     val toggleSelect: (Track) -> Unit = {
         if (selectedIds.contains(it.id)) selectedIds.remove(it.id) else selectedIds.add(it.id)
         if (selectedIds.isEmpty()) selectionMode = false
     }
 
-    // Replaced rememberSnackbarHostState with manual remember due to unresolved reference
-    val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
-    // Using passed scope instead
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var pendingDeleteIds by remember { mutableStateOf<List<String>>(emptyList()) }
-    var lastDeletedTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val toggleSelectAll: () -> Unit = {
+        if (selectedIds.size == tracks.size) {
+            selectedIds.clear()
+            selectionMode = false
+        } else {
+            selectedIds.clear()
+            selectedIds.addAll(tracks.map { it.id })
+            selectionMode = true
+        }
+    }
 
-    // Playlist tab dialogs/state
-    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
-    var newPlaylistName by remember { mutableStateOf("") }
-    var renamingPlaylistId by remember { mutableStateOf<String?>(null) }
-    var renamePlaylistValue by remember { mutableStateOf("") }
-    var deletingPlaylistId by remember { mutableStateOf<String?>(null) }
-
-    // Album/Artist bulk delete state
-    var bulkDeleteTrackIds by remember { mutableStateOf<List<String>>(emptyList()) }
-    var bulkDeleteMessage by remember { mutableStateOf("") }
-    var showBulkDeleteDialog by remember { mutableStateOf(false) }
-
-    val configuration = LocalConfiguration.current
-    val screenHeightDp = configuration.screenHeightDp
-    val headerRowHeight: Dp = (screenHeightDp / 24f).dp   // First row (handled by outer TopAppBar) + we use same for mini player row
-    val miniPlayerHeight: Dp = (screenHeightDp / 14f).dp            // Second row: minimized player
-    val tabRowHeight: Dp = (screenHeightDp / 24f).dp      // Tab select row
-    val trackRowHeight: Dp = (screenHeightDp / 12f).dp    // Approx row height spec
-
-    // Add Scaffold without TopAppBar
     Scaffold(
-        // TopAppBar removed from here
-        // Add FloatingActionButton in Scaffold parameter instead of in content
         floatingActionButton = {
             when (currentTab) {
                 MainTab.TRACKS -> {
@@ -185,53 +161,24 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        // Wrap existing content with padding from Scaffold
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // Custom navigation row replacing the TopAppBar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(headerRowHeight)
-                    .background(Charcoal)
-                    .padding(horizontal = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Left side with menu button and title
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Left-aligned menu button (hamburger menu)
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
+            // Custom top app bar
+            MainTopAppBar(drawerState, scope, nav, headerRowHeight)
 
-                        // Title positioned next to menu button
-                        Text(
-                            "Music Library",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-
-                    // Right-aligned search icon (in the main Row)
-                    IconButton(onClick = { nav.navigate(Routes.SEARCH) }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-                }
-            }
-
-            // Second header row: Minimized player
+            // Player bar
             MinimizedPlayerBar(onClick = { nav.navigate(Routes.PLAYER) }, modifier = Modifier.height(miniPlayerHeight))
-            // Tab row with specified height
+
+            // Tab row
             Surface(tonalElevation = 2.dp) {
-                TabRow(selectedTabIndex = currentTab.ordinal, modifier = Modifier.height(tabRowHeight), containerColor = DarkGrey) {
+                TabRow(
+                    selectedTabIndex = currentTab.ordinal,
+                    modifier = Modifier.height(tabRowHeight),
+                    containerColor = DarkGrey
+                ) {
                     MainTab.entries.forEach { tab ->
                         Tab(
                             text = { Text(tab.name.lowercase().replaceFirstChar { it.uppercase() }) },
@@ -241,6 +188,8 @@ fun MainScreen(
                     }
                 }
             }
+
+            // Tab content
             when (currentTab) {
                 MainTab.TRACKS -> {
                     val sortedTracks = remember(tracks, trackSortField, trackSortOrder) {
@@ -252,18 +201,26 @@ fun MainScreen(
                         }
                         if (trackSortOrder == SortOrder.ASC) base else base.reversed()
                     }
-                    TrackList(
+
+                    TrackListPanel(
                         tracks = sortedTracks,
                         selectionMode = selectionMode,
                         selectedIds = selectedIds,
                         onToggleSelect = { t -> toggleSelect(t) },
                         onEnterSelection = { selectionMode = true; toggleSelect(it) },
-                        onPlay = { playback.loadAndPlay(sortedTracks, sortedTracks.indexOf(it)); nav.navigate(Routes.PLAYER) },
                         onRowClick = {
-                            if (selectionMode) toggleSelect(it) else { playback.loadAndPlay(sortedTracks, sortedTracks.indexOf(it)); nav.navigate(Routes.PLAYER) }
+                            if (selectionMode) toggleSelect(it) else {
+                                playback.loadAndPlay(sortedTracks, sortedTracks.indexOf(it))
+                                nav.navigate(Routes.PLAYER)
+                            }
                         },
-                        onAddToPlaylist = { t -> nav.navigate(RouteBuilder.addToPlaylist(listOf(t.id))) },
-                        onDelete = { t -> pendingDeleteIds = listOf(t.id); showDeleteDialog = true },
+                        onAddToPlaylist = { t ->
+                            nav.navigate(com.thorfio.playzer.ui.navigation.RouteBuilder.addToPlaylist(listOf(t.id)))
+                        },
+                        onDelete = { t ->
+                            deletingTrackId = t.id
+                            showDeleteTrackDialog = true
+                        },
                         rowHeight = trackRowHeight,
                         sortControls = {
                             TracksSortHeader(
@@ -271,497 +228,180 @@ fun MainScreen(
                                 field = trackSortField,
                                 order = trackSortOrder,
                                 onChangeField = { trackSortField = it },
-                                onToggleOrder = { trackSortOrder = if (trackSortOrder == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC }
+                                onToggleOrder = {
+                                    trackSortOrder = if (trackSortOrder == SortOrder.ASC)
+                                        SortOrder.DESC else SortOrder.ASC
+                                }
                             )
                         }
                     )
                 }
-                MainTab.PLAYLISTS -> PlaylistsPanel(
-                    playlists = playlists,
-                    onPlay = { pl ->
-                        val list = repo.tracksByFileUris(pl.fileUris)
-                        if (list.isNotEmpty()) { playback.loadAndPlay(list); nav.navigate(Routes.PLAYER) }
-                    },
-                    onRename = { pl -> renamingPlaylistId = pl.id; renamePlaylistValue = pl.name },
-                    onDelete = { pl -> deletingPlaylistId = pl.id },
-                    onOpen = { pl -> nav.navigate("playlist/${pl.id}") }
-                )
+
+                MainTab.PLAYLISTS -> {
+                    PlaylistsPanel(
+                        playlists = playlists,
+                        onPlay = { pl ->
+                            val list = repo.tracksByFileUris(pl.fileUris)
+                            if (list.isNotEmpty()) {
+                                playback.loadAndPlay(list)
+                                nav.navigate(Routes.PLAYER)
+                            }
+                        },
+                        onRename = { pl ->
+                            renamingPlaylistId = pl.id
+                            renamePlaylistValue = pl.name
+                        },
+                        onDelete = { pl -> deletingPlaylistId = pl.id },
+                        onOpen = { pl -> nav.navigate("playlist/${pl.id}") }
+                    )
+                }
+
                 MainTab.ALBUMS -> {
                     val sorted = remember(albums, albumSortOrder) {
                         val base = albums.sortedBy { it.title.lowercase() }
                         if (albumSortOrder == AlbumSortOrder.ASC) base else base.reversed()
                     }
+
                     AlbumsPanel(
                         albums = sorted,
                         nav = nav,
                         sortControls = {
-                            SimpleSortHeader(label = "${albums.size} Albums", asc = albumSortOrder == AlbumSortOrder.ASC) {
-                                albumSortOrder = if (albumSortOrder == AlbumSortOrder.ASC) AlbumSortOrder.DESC else AlbumSortOrder.ASC
+                            SimpleSortHeader(
+                                label = "${albums.size} Albums",
+                                asc = albumSortOrder == AlbumSortOrder.ASC
+                            ) {
+                                albumSortOrder = if (albumSortOrder == AlbumSortOrder.ASC)
+                                    AlbumSortOrder.DESC else AlbumSortOrder.ASC
                             }
                         },
                         onPlay = { album ->
                             val list = repo.tracksByIds(album.trackIds)
-                            if (list.isNotEmpty()) { playback.loadAndPlay(list); nav.navigate(Routes.PLAYER) }
+                            if (list.isNotEmpty()) {
+                                playback.loadAndPlay(list)
+                                nav.navigate(Routes.PLAYER)
+                            }
                         },
-                        onAddToPlaylist = { album -> nav.navigate(RouteBuilder.addToPlaylist(album.trackIds)) },
+                        onAddToPlaylist = { album ->
+                            nav.navigate(com.thorfio.playzer.ui.navigation.RouteBuilder.addToPlaylist(album.trackIds))
+                        },
                         onDelete = { album ->
-                            val list = repo.tracksByIds(album.trackIds)
-                            bulkDeleteTrackIds = list.map { it.id }
-                            bulkDeleteMessage = "Allow this App to Permanently Delete all ${list.size} Number of Audio Files from this Album?"
-                            showBulkDeleteDialog = true
+                            deletingAlbumId = album.id
+                            showDeleteAlbumDialog = true
                         }
                     )
                 }
+
                 MainTab.ARTISTS -> {
                     val sorted = remember(artists, artistSortOrder) {
                         val base = artists.sortedBy { it.name.lowercase() }
                         if (artistSortOrder == ArtistSortOrder.ASC) base else base.reversed()
                     }
+
                     ArtistsPanel(
                         artists = sorted,
                         nav = nav,
                         sortControls = {
-                            SimpleSortHeader(label = "${artists.size} Artists", asc = artistSortOrder == ArtistSortOrder.ASC) {
-                                artistSortOrder = if (artistSortOrder == ArtistSortOrder.ASC) ArtistSortOrder.DESC else ArtistSortOrder.ASC
+                            SimpleSortHeader(
+                                label = "${artists.size} Artists",
+                                asc = artistSortOrder == ArtistSortOrder.ASC
+                            ) {
+                                artistSortOrder = if (artistSortOrder == ArtistSortOrder.ASC)
+                                    ArtistSortOrder.DESC else ArtistSortOrder.ASC
                             }
                         },
                         onPlay = { artist ->
                             val list = repo.tracksByIds(artist.trackIds)
-                            if (list.isNotEmpty()) { playback.loadAndPlay(list); nav.navigate(Routes.PLAYER) }
+                            if (list.isNotEmpty()) {
+                                playback.loadAndPlay(list)
+                                nav.navigate(Routes.PLAYER)
+                            }
                         },
-                        onAddToPlaylist = { artist -> nav.navigate(RouteBuilder.addToPlaylist(artist.trackIds)) },
+                        onAddToPlaylist = { artist ->
+                            nav.navigate(com.thorfio.playzer.ui.navigation.RouteBuilder.addToPlaylist(artist.trackIds))
+                        },
                         onDelete = { artist ->
-                            val list = repo.tracksByIds(artist.trackIds)
-                            bulkDeleteTrackIds = list.map { it.id }
-                            bulkDeleteMessage = "Allow this App to Permanently Delete all ${list.size} Number of Audio Files for this Artist?"
-                            showBulkDeleteDialog = true
+                            deletingArtistId = artist.id
+                            showDeleteArtistDialog = true
                         }
                     )
                 }
             }
         }
-        // Selection toolbar remains overlay at top
+
+        // Selection toolbar (when active)
         if (selectionMode && currentTab == MainTab.TRACKS) {
-            Surface(tonalElevation = 4.dp, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { selectionMode = false; selectedIds.clear() }) { Icon(Icons.Filled.Close, contentDescription = "Cancel selection") }
-                    IconButton(onClick = {
-                        // Select All / Clear All toggle
-                        if (selectedIds.size == tracks.size) {
-                            selectedIds.clear(); selectionMode = false
-                        } else {
-                            selectedIds.clear(); selectedIds.addAll(tracks.map { it.id }); selectionMode = true
-                        }
-                    }) {
-                        if (selectedIds.size == tracks.size) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Clear All")
-                        } else {
-                            Icon(Icons.Filled.DoneAll, contentDescription = "Select All")
-                        }
-                    }
-                    Text("${selectedIds.size} selected", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    IconButton(enabled = selectedIds.isNotEmpty(), onClick = {
-                        // Create new playlist directly from current selection
-                        val sel = selectedIds.toList()
-                        selectionMode = false
-                        val route = RouteBuilder.createPlaylist(sel)
-                        nav.navigate(route) {
-                            launchSingleTop = true
-                            popUpTo(Routes.MAIN) { inclusive = false; saveState = true }
-                        }
-                        selectedIds.clear()
-                    }) { Icon(Icons.Filled.Add, contentDescription = "Create Playlist from Selection") }
-                    IconButton(enabled = selectedIds.isNotEmpty(), onClick = {
-                        val route = RouteBuilder.addToPlaylist(selectedIds.toList())
-                        selectionMode = false
-                        nav.navigate(route) {
-                            launchSingleTop = true
-                            popUpTo(Routes.MAIN) { inclusive = false; saveState = true }
-                        }
-                        selectedIds.clear()
-                    }) { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add selected to Playlist") }
-                    IconButton(enabled = selectedIds.isNotEmpty(), onClick = {
-                        pendingDeleteIds = selectedIds.toList()
-                        showDeleteDialog = true
-                    }) { Icon(Icons.Filled.Delete, contentDescription = "Delete selected") }
-                }
-            }
-        }
-
-        if (showDeleteDialog) {
-            val count = pendingDeleteIds.size
-            val repo = ServiceLocator.musicRepository
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        lastDeletedTracks = repo.tracksByIds(pendingDeleteIds)
-                        val deletedCount = pendingDeleteIds.size
-                        repo.deleteTracks(pendingDeleteIds)
-                        showDeleteDialog = false
-                        selectionMode = false
-                        selectedIds.clear()
-                        val toRestore = lastDeletedTracks
-                        scope.launch {
-                            val res = snackbarHostState.showSnackbar(
-                                message = "Deleted $deletedCount track" + if (deletedCount > 1) "s" else "",
-                                actionLabel = "UNDO",
-                                duration = SnackbarDuration.Short
-                            )
-                            if (res == SnackbarResult.ActionPerformed) {
-                                repo.restoreTracks(toRestore)
-                            }
-                            pendingDeleteIds = emptyList()
-                            lastDeletedTracks = emptyList()
-                        }
-                    }) { Text("Allow") }
+            SelectionToolbar(
+                selectedIds = selectedIds,
+                totalTracks = tracks.size,
+                onClearSelection = {
+                    selectionMode = false
+                    selectedIds.clear()
                 },
-                dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Deny") } },
-                title = { Text(if (count == 1) "Delete Track" else "Delete $count Tracks") },
-                text = { Text(if (count == 1) "Permanently delete this audio file?" else "Permanently delete these $count audio files?") }
+                onToggleSelectAll = toggleSelectAll,
+                onDeleteSelected = {
+                    //TODO: Safe Delete - pendingDeleteIds = selectedIds.toList()
+                    //TODO: Safe Delete - showDeleteDialog = true
+                },
+                nav = nav
             )
         }
 
-        // Playlist create dialog
-        if (showCreatePlaylistDialog) {
-            AlertDialog(
-                onDismissRequest = { showCreatePlaylistDialog = false; newPlaylistName = "" },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val name = newPlaylistName.ifBlank { "New Playlist" }
-                        playlistStore.create(name)
-                        scope.launch { snackbarHostState.showSnackbar("Playlist Created") }
-                        newPlaylistName = ""; showCreatePlaylistDialog = false
-                    }) { Text("OK") }
-                },
-                dismissButton = { TextButton(onClick = { showCreatePlaylistDialog = false; newPlaylistName = "" }) { Text("CANCEL") } },
-                title = { Text("Create New Playlist") },
-                text = { OutlinedTextField(
-                    value = newPlaylistName,
-                    onValueChange = { newPlaylistName = it },
-                    label = { Text("Name") },
-                    singleLine = true
-                ) }
-            )
-        }
+        // Dialogs
+        TrackDeletionDialog(
+            showDialog = showDeleteTrackDialog,
+            trackId = deletingTrackId,
+            snackbarHostState = snackbarHostState,
+            scope = scope,
+            onDismiss = { showDeleteTrackDialog = false }
+        )
 
-        if (renamingPlaylistId != null) {
-            val pl = playlists.firstOrNull { it.id == renamingPlaylistId }
-            if (pl != null) {
-                AlertDialog(
-                    onDismissRequest = { renamingPlaylistId = null },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            playlistStore.rename(pl.id, renamePlaylistValue.ifBlank { "Playlist" })
-                            scope.launch { snackbarHostState.showSnackbar("Playlist Renamed") }
-                            renamingPlaylistId = null
-                        }) { Text("OK") }
-                    },
-                    dismissButton = { TextButton(onClick = { renamingPlaylistId = null }) { Text("CANCEL") } },
-                    title = { Text("Edit Playlist Name") },
-                    text = { OutlinedTextField(value = renamePlaylistValue, onValueChange = { renamePlaylistValue = it }) }
-                )
-            }
-        }
+        CreatePlaylistDialog(
+            showDialog = showCreatePlaylistDialog,
+            snackbarHostState = snackbarHostState,
+            scope = scope,
+            onDismiss = { showCreatePlaylistDialog = false }
+        )
+
+        RenamePlaylistDialog(
+            playlistId = renamingPlaylistId,
+            initialName = renamePlaylistValue,
+            snackbarHostState = snackbarHostState,
+            scope = scope,
+            onDismiss = { renamingPlaylistId = null }
+        )
 
         if (deletingPlaylistId != null) {
             val pl = playlists.firstOrNull { it.id == deletingPlaylistId }
             if (pl != null) {
-                AlertDialog(
-                    onDismissRequest = { deletingPlaylistId = null },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            playlistStore.delete(pl.id)
-                            scope.launch { snackbarHostState.showSnackbar("Playlist Deleted") }
-                            deletingPlaylistId = null
-                        }) { Text("Yes") }
-                    },
-                    dismissButton = { TextButton(onClick = { deletingPlaylistId = null }) { Text("No") } },
-                    title = { Text("Confirm Delete") },
-                    text = { Text("Are you sure you want to permanently delete this Playlist?") }
+                DeletePlaylistDialog(
+                    playlistId = deletingPlaylistId,
+                    snackbarHostState = snackbarHostState,
+                    scope = scope,
+                    onDismiss = { deletingPlaylistId = null }
                 )
             }
         }
 
-        if (showBulkDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showBulkDeleteDialog = false; bulkDeleteTrackIds = emptyList() },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val repoLocal = ServiceLocator.musicRepository
-                        val toRestore = repoLocal.tracksByIds(bulkDeleteTrackIds)
-                        repoLocal.deleteTracks(bulkDeleteTrackIds)
-                        showBulkDeleteDialog = false
-                        scope.launch {
-                            val res = snackbarHostState.showSnackbar(
-                                message = "Track(s) Permanently Deleted",
-                                actionLabel = "UNDO",
-                                duration = SnackbarDuration.Short
-                            )
-                            if (res == SnackbarResult.ActionPerformed) repoLocal.restoreTracks(toRestore)
-                            bulkDeleteTrackIds = emptyList()
-                        }
-                    }) { Text("Allow") }
-                },
-                dismissButton = { TextButton(onClick = { showBulkDeleteDialog = false; bulkDeleteTrackIds = emptyList() }) { Text("Deny") } },
-                title = { Text(bulkDeleteMessage) },
-                text = { Text("This action cannot be undone") }
-            )
-        }
-    }
-}
-
-@Composable
-private fun MinimizedPlayerBar(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val playback = ServiceLocator.playbackController
-    val track by playback.currentTrack.collectAsState()
-    Surface(tonalElevation = 2.dp, modifier = modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp).combinedClickable(onClick = onClick, onLongClick = {}), verticalAlignment = Alignment.CenterVertically) {
-            TrackAlbumArt(track = track, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(track?.title ?: "--", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                Text(track?.artistName ?: "--", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        DeleteArtistDialog(
+            showDialog = showDeleteArtistDialog,
+            artistId = deletingArtistId,
+            snackbarHostState = snackbarHostState,
+            scope = scope,
+            onDismiss = {
+                showDeleteArtistDialog = false
+                deletingArtistId = null
             }
-            val isPlaying by playback.isPlaying.collectAsState()
-            IconButton(onClick = { playback.togglePlayPause() }) { Icon(Icons.Filled.PlayArrow, contentDescription = if (isPlaying) "Pause" else "Play") }
-        }
-    }
-}
+        )
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TrackList(
-    tracks: List<Track>,
-    selectionMode: Boolean,
-    selectedIds: List<String>,
-    onToggleSelect: (Track) -> Unit,
-    onEnterSelection: (Track) -> Unit,
-    onPlay: (Track) -> Unit,
-    onRowClick: (Track) -> Unit,
-    onAddToPlaylist: (Track) -> Unit,
-    onDelete: (Track) -> Unit,
-    rowHeight: Dp,
-    sortControls: @Composable () -> Unit
-) {
-    var menuForTrackId by remember { mutableStateOf<String?>(null) }
-
-    LazyColumn(Modifier.fillMaxSize()) {
-        stickyHeader { sortControls() }
-        if (tracks.isEmpty()) {
-            item {
-                Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
-                    Text("No tracks found", style = MaterialTheme.typography.bodyMedium)
-                }
+        DeleteAlbumDialog(
+            showDialog = showDeleteAlbumDialog,
+            albumId = deletingAlbumId,
+            snackbarHostState = snackbarHostState,
+            scope = scope,
+            onDismiss = {
+                showDeleteAlbumDialog = false
+                deletingAlbumId = null
             }
-        }
-        itemsIndexed(tracks) { index, track ->
-            val selected = selectedIds.contains(track.id)
-
-            TrackListComponent(
-                track = track,
-                index = index,
-                isSelected = selected,
-                isSelectionMode = selectionMode,
-                rowHeight = rowHeight,
-                onClick = { onRowClick(track) },
-                onLongClick = { if (!selectionMode) onEnterSelection(track) else onToggleSelect(track) },
-                onMenuClick = { menuForTrackId = track.id },
-                menuContent = {
-                    DropdownMenu(expanded = menuForTrackId == track.id, onDismissRequest = { if (menuForTrackId == track.id) menuForTrackId = null }) {
-                        DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(track); menuForTrackId = null })
-                        DropdownMenuItem(text = { Text("Add to Playlist") }, onClick = { onAddToPlaylist(track); menuForTrackId = null })
-                        DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(track); menuForTrackId = null })
-                    }
-                }
-            )
-        }
-        item { Spacer(Modifier.height(80.dp)) }
-    }
-}
-
-@Composable
-private fun PlaylistsPanel(
-    playlists: List<com.thorfio.playzer.data.model.Playlist>,
-    onPlay: (com.thorfio.playzer.data.model.Playlist) -> Unit,
-    onRename: (com.thorfio.playzer.data.model.Playlist) -> Unit,
-    onDelete: (com.thorfio.playzer.data.model.Playlist) -> Unit,
-    onOpen: (com.thorfio.playzer.data.model.Playlist) -> Unit
-) {
-    ServiceLocator.musicRepository
-    var menuForId by remember { mutableStateOf<String?>(null) }
-    LazyColumn(Modifier.fillMaxSize()) {
-        if (playlists.isEmpty()) {
-            item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No playlists yet") } }
-        }
-        itemsIndexed(playlists, key = { _, it -> it.id }) { index, p ->
-            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
-            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .background(rowColor)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
-                Column(Modifier.weight(1f).clickable { onOpen(p) }) {
-                    Text(p.name, maxLines = 1)
-                    Text("${p.fileUris.size} tracks", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Box { // menu anchor
-                    IconButton(onClick = { menuForId = p.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Playlist Options") }
-                    DropdownMenu(expanded = menuForId == p.id, onDismissRequest = { if (menuForId == p.id) menuForId = null }) {
-                        DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(p); menuForId = null })
-                        DropdownMenuItem(text = { Text("Edit Playlist Name") }, onClick = { onRename(p); menuForId = null })
-                        DropdownMenuItem(text = { Text("Delete Playlist") }, onClick = { onDelete(p); menuForId = null })
-                    }
-                }
-            }
-            HorizontalDivider()
-        }
-        item { Spacer(Modifier.height(100.dp)) }
-    }
-}
-
-@Composable
-private fun TracksSortHeader(count: Int, field: TrackSortField, order: SortOrder, onChangeField: (TrackSortField) -> Unit, onToggleOrder: () -> Unit) {
-    Surface(tonalElevation = 2.dp, color = Charcoal) {
-        Row(
-            Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween // This ensures proper spacing between left and right content
-        ) {
-            // Left side: Track count label
-            Text("$count Tracks", style = MaterialTheme.typography.labelLarge)
-
-            // Right side: Sort icon and dropdown
-            Box {
-                var menu by remember { mutableStateOf(false) }
-                IconButton(
-                    onClick = { menu = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Sort,
-                        contentDescription = "Sort by ${field.name.lowercase().replaceFirstChar { it.uppercase() }} (${if (order==SortOrder.ASC) "Ascending" else "Descending"})"
-                    )
-                }
-
-                // Position the dropdown on the right side
-                DropdownMenu(
-                    expanded = menu,
-                    onDismissRequest = { menu = false },
-                    offset = androidx.compose.ui.unit.DpOffset(0.dp, 0.dp) // Default position (right-aligned with the icon)
-                ) {
-                    TrackSortField.entries.forEach { f ->
-                        DropdownMenuItem(text = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }, onClick = { onChangeField(f); menu = false })
-                    }
-                    HorizontalDivider()
-                    DropdownMenuItem(text = { Text(if (order == SortOrder.ASC) "Descending" else "Ascending") }, onClick = { onToggleOrder(); menu = false })
-                }
-            }
-        }
-    }
-}
-
-// Albums panel extended options
-@Composable
-private fun AlbumsPanel(
-    albums: List<com.thorfio.playzer.data.model.Album>,
-    nav: NavController,
-    sortControls: (@Composable () -> Unit)? = null,
-    onPlay: (com.thorfio.playzer.data.model.Album) -> Unit,
-    onAddToPlaylist: (com.thorfio.playzer.data.model.Album) -> Unit,
-    onDelete: (com.thorfio.playzer.data.model.Album) -> Unit
-) {
-    val repo = ServiceLocator.musicRepository
-    var menuForId by remember { mutableStateOf<String?>(null) }
-    LazyColumn(Modifier.fillMaxSize()) {
-        stickyHeader { if (sortControls != null) sortControls() }
-        if (albums.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No albums") } }
-        itemsIndexed(albums, key = { _, it -> it.id }) { index, a ->
-            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
-            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
-            Row(Modifier.fillMaxWidth().background(rowColor).padding(16.dp).clickable { nav.navigate("album/${a.id}") }, verticalAlignment = Alignment.CenterVertically) {
-                val artTrack = a.trackIds.firstOrNull()?.let { id -> repo.tracks.collectAsState().value.firstOrNull { it.id == id } }
-                TrackAlbumArt(track = artTrack, size = 48.dp, modifier = Modifier.padding(end = 12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(a.title)
-                    Text(a.artistName, style = MaterialTheme.typography.labelSmall)
-                }
-                Box {
-                    IconButton(onClick = { menuForId = a.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Album Options") }
-                    DropdownMenu(expanded = menuForId == a.id, onDismissRequest = { if (menuForId == a.id) menuForId = null }) {
-                        DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(a); menuForId = null })
-                        DropdownMenuItem(text = { Text("Add to Playlist") }, onClick = { onAddToPlaylist(a); menuForId = null })
-                        DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(a); menuForId = null })
-                    }
-                }
-            }
-            HorizontalDivider()
-        }
-    }
-}
-
-// Artists panel extended options
-@Composable
-private fun ArtistsPanel(
-    artists: List<com.thorfio.playzer.data.model.Artist>,
-    nav: NavController,
-    sortControls: (@Composable () -> Unit)? = null,
-    onPlay: (com.thorfio.playzer.data.model.Artist) -> Unit,
-    onAddToPlaylist: (com.thorfio.playzer.data.model.Artist) -> Unit,
-    onDelete: (com.thorfio.playzer.data.model.Artist) -> Unit,
-) {
-    var menuForId by remember { mutableStateOf<String?>(null) }
-    LazyColumn(Modifier.fillMaxSize()) {
-        stickyHeader { if (sortControls != null) sortControls() }
-        if (artists.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No artists") } }
-        itemsIndexed(artists, key = { _, it -> it.id }) { index, artist ->
-            // Switch alternating row colors (DarkGrey for even rows, Charcoal for odd rows)
-            val rowColor = if (index % 2 == 0) DarkGrey else Charcoal
-            Row(Modifier.fillMaxWidth().background(rowColor).padding(16.dp).clickable { nav.navigate("artist/${artist.id}") }, verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(artist.name)
-                    Text("${artist.albumIds.size} Albums", style = MaterialTheme.typography.labelSmall)
-                }
-                Text("${artist.trackIds.size} Tracks", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 8.dp))
-                Box {
-                    IconButton(onClick = { menuForId = artist.id }) { Icon(Icons.Filled.MoreVert, contentDescription = "Artist Options") }
-                    DropdownMenu(expanded = menuForId == artist.id, onDismissRequest = { if (menuForId == artist.id) menuForId = null }) {
-                        DropdownMenuItem(text = { Text("Play") }, onClick = { onPlay(artist); menuForId = null })
-                        DropdownMenuItem(text = { Text("Add to Playlist") }, onClick = { onAddToPlaylist(artist); menuForId = null })
-                        DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(artist); menuForId = null })
-                    }
-                }
-            }
-            HorizontalDivider()
-        }
-    }
-}
-
-@Composable
-private fun SimpleSortHeader(label: String, asc: Boolean, onToggle: () -> Unit) {
-    Surface(tonalElevation = 2.dp, color = Charcoal) {
-        Row(
-            Modifier.fillMaxWidth().height(32.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween // This ensures proper spacing between left and right content
-        ) {
-            // Left side: Album/Artist count label
-            Text(label, style = MaterialTheme.typography.labelLarge)
-
-            // Right side: Sort icon
-            IconButton(
-                onClick = onToggle,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Sort,
-                    contentDescription = "Toggle sort order (currently ${if (asc) "Ascending" else "Descending"})"
-                )
-            }
-        }
+        )
     }
 }

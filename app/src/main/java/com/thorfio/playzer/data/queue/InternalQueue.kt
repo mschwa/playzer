@@ -7,7 +7,6 @@ import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import java.io.File
 import kotlin.random.Random
 

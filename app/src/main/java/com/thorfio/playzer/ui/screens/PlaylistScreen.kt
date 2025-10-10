@@ -110,7 +110,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                     onClick = {
                         // Shuffle the tracks and load them into the player
                         val shuffledTracks = tracks.shuffled()
-                        ServiceLocator.playbackController.loadAndPlay(shuffledTracks)
+                        ServiceLocator.playbackService.loadAndPlay(shuffledTracks)
                         nav.navigate(Routes.PLAYER)
                     }
                 ) {
@@ -131,7 +131,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                 tracks = tracks,
                 nav = nav,
                 onPlay = { idx ->
-                    if (tracks.isNotEmpty()) ServiceLocator.playbackController.loadAndPlay(tracks, idx)
+                    if (tracks.isNotEmpty()) ServiceLocator.playbackService.loadAndPlay(tracks, idx)
                     nav.navigate(Routes.PLAYER)
                 },
                 onRemove = { trackId ->
@@ -381,7 +381,7 @@ private fun PlaylistHeaderInfo(playlist: Playlist?, tracks: List<Track>) {
         // Right side with Play All button
         if (tracks.isNotEmpty()) {
             FilledTonalButton(
-                onClick = { ServiceLocator.playbackController.loadAndPlay(tracks) },
+                onClick = { ServiceLocator.playbackService.loadAndPlay(tracks) },
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = Color.White.copy(alpha = 0.2f),
                     contentColor = Color.White

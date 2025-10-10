@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.thorfio.playzer.core.ServiceLocator
-import com.thorfio.playzer.data.scanner.MusicScannerService
+import com.thorfio.playzer.services.MusicScannerService
 import kotlinx.coroutines.launch
 
 class PlayzerApplication : Application() {
@@ -32,7 +32,7 @@ class PlayzerApplication : Application() {
         // Automatically scan for audio files at startup using DirectFileLoader
         ProcessLifecycleOwner.get().lifecycleScope.launch {
             try {
-                val result = com.thorfio.playzer.data.scanner.DirectFileLoader.loadFilesFromFolder(applicationContext)
+                val result = com.thorfio.playzer.data.scanner.DirectFileLoader.scanMusicFolder(applicationContext)
                 Log.d("PlayzerApp", "DirectFileLoader scan result: $result")
             } catch (e: Exception) {
                 Log.e("PlayzerApp", "Error running DirectFileLoader scan", e)

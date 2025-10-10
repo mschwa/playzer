@@ -9,10 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,8 +30,6 @@ import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.ui.components.TrackListComponent
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.navigation.RouteBuilder
-import com.thorfio.playzer.ui.theme.Charcoal
-import com.thorfio.playzer.ui.theme.DarkGrey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -182,7 +177,7 @@ fun AlbumScreen(nav: NavController, albumId: String) {
                         isSelectionMode = false,
                         rowHeight = 72.dp,
                         onClick = {
-                            ServiceLocator.playbackController.loadAndPlay(tracks, index)
+                            ServiceLocator.playbackService.loadAndPlay(tracks, index)
                             nav.navigate(Routes.PLAYER)
                         },
                         onLongClick = { /* No-op */ },
@@ -192,14 +187,6 @@ fun AlbumScreen(nav: NavController, albumId: String) {
                                 expanded = menuForTrackId == track.id,
                                 onDismissRequest = { menuForTrackId = null }
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Play") },
-                                    onClick = {
-                                        ServiceLocator.playbackController.loadAndPlay(tracks, index)
-                                        nav.navigate(Routes.PLAYER)
-                                        menuForTrackId = null
-                                    }
-                                )
                                 DropdownMenuItem(
                                     text = { Text("Add to Playlist") },
                                     onClick = {

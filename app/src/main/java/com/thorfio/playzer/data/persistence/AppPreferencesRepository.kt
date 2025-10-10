@@ -1,4 +1,4 @@
-package com.thorfio.playzer.data.prefs
+package com.thorfio.playzer.data.persistence
 
 import android.content.Context
 import androidx.datastore.core.DataStore

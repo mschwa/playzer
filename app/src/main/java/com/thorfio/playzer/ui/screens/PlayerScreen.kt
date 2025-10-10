@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(nav: NavController) {
-    val playback = ServiceLocator.playbackController
+    val playback = ServiceLocator.playbackService
     val track by playback.currentTrack.collectAsState()
     val isPlaying by playback.isPlaying.collectAsState()
 

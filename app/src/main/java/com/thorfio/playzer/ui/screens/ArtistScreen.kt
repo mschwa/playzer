@@ -70,7 +70,7 @@ fun ArtistScreen(nav: NavController, artistId: String) {
                 },
                 actions = {
                     if (tracks.isNotEmpty()) IconButton(onClick = {
-                        ServiceLocator.playbackController.loadAndPlay(tracks)
+                        ServiceLocator.playbackService.loadAndPlay(tracks)
                         nav.navigate(Routes.PLAYER)
                     }) { Icon(Icons.Default.PlayArrow, contentDescription = "Play All") }
                 }
@@ -98,7 +98,7 @@ fun ArtistScreen(nav: NavController, artistId: String) {
                         isSelectionMode = selectionMode,
                         rowHeight = 72.dp,
                         onClick = {
-                            ServiceLocator.playbackController.loadAndPlay(tracks, index)
+                            ServiceLocator.playbackService.loadAndPlay(tracks, index)
                             nav.navigate(Routes.PLAYER)
                         },
                         onLongClick = {
@@ -125,14 +125,6 @@ fun ArtistScreen(nav: NavController, artistId: String) {
                                 expanded = menuForTrackId == track.id,
                                 onDismissRequest = { menuForTrackId = null }
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Play") },
-                                    onClick = {
-                                        ServiceLocator.playbackController.loadAndPlay(tracks, index)
-                                        nav.navigate(Routes.PLAYER)
-                                        menuForTrackId = null
-                                    }
-                                )
                                 DropdownMenuItem(
                                     text = { Text("Add to Playlist") },
                                     onClick = {

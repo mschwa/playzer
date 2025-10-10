@@ -1,4 +1,4 @@
-package com.thorfio.playzer.data.prefs
+package com.thorfio.playzer.data.persistence
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -42,4 +42,3 @@ class ThemePreferencesRepository(private val context: Context) {
         scope.launch { dataStore.edit { it[DYNAMIC_KEY] = enabled } }
     }
 }
-

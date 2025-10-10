@@ -1,4 +1,4 @@
-package com.thorfio.playzer.data.player
+package com.thorfio.playzer.services
 
 import android.content.Context
 import androidx.media3.common.MediaItem
@@ -6,7 +6,6 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.data.queue.InternalQueue
-import com.thorfio.playzer.data.repo.MusicRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,11 +18,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class PlaybackController(
+class PlaybackService(
     context: Context,
-    private val musicRepository: MusicRepository,
-    private val internalQueue: InternalQueue
-) {
+    private val internalQueue: InternalQueue)
+{
     private val player = ExoPlayer.Builder(context).build()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 

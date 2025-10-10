@@ -1,4 +1,4 @@
-package com.thorfio.playzer.data.repo
+package com.thorfio.playzer.data.persistence
 
 import android.util.Log
 import com.thorfio.playzer.data.model.Album
@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Repository managing music library data. */
+/** In memory repository for managing music library data. */
 class MusicRepository {
     companion object {
         private const val TAG = "MusicRepository"
@@ -28,13 +28,12 @@ class MusicRepository {
 
     fun tracksByIds(ids: List<String>) = _tracks.value.filter { it.id in ids }
 
+    fun getTrackById(id: String) = _tracks.value.find { it.id == id }
+
     /**
      * Get tracks by their file URIs
      */
     fun tracksByFileUris(fileUris: List<String>) = _tracks.value.filter { it.fileUri in fileUris }
-
-    fun album(id: String) = _albums.value.firstOrNull { it.id == id }
-    fun artist(id: String) = _artists.value.firstOrNull { it.id == id }
 
     fun search(query: String): Triple<List<Track>, List<Album>, List<Artist>> {
         if (query.isBlank()) return Triple(emptyList(), emptyList(), emptyList())
@@ -46,9 +45,9 @@ class MusicRepository {
         )
     }
 
-    fun deleteTracks(ids: List<String>) {
-        if (ids.isEmpty()) return
-        val idSet = ids.toSet()
+    fun deleteTracks(trackIds: List<String>) {
+        if (trackIds.isEmpty()) return
+        val idSet = trackIds.toSet()
         val remainingTracks = _tracks.value.filterNot { it.id in idSet }
         _tracks.value = remainingTracks
         _albums.value = _albums.value.map { al ->
@@ -59,6 +58,55 @@ class MusicRepository {
             val newTrackIds = ar.trackIds.filterNot { it in idSet }
             ar.copy(trackIds = newTrackIds)
         }
+    }
+
+    fun deleteTrackFromLibrary(trackId: String?) {
+        if (trackId == null) return
+        val remainingTracks = _tracks.value.filterNot { it.id == trackId }
+        _tracks.value = remainingTracks
+        _albums.value = _albums.value.map { al ->
+            val newTrackIds = al.trackIds.filterNot { it == trackId }
+            al.copy(trackIds = newTrackIds, coverTrackId = newTrackIds.firstOrNull() ?: al.coverTrackId)
+        }
+        _artists.value = _artists.value.map { ar ->
+            val newTrackIds = ar.trackIds.filterNot { it == trackId }
+            ar.copy(trackIds = newTrackIds)
+        }
+    }
+
+    fun deleteAlbumFromLibrary(album: Album) {
+
+        val remainingTracks = _tracks.value.filterNot { it.id in album.trackIds }
+        _tracks.value = remainingTracks
+
+        val remainingAlbums = _albums.value.filterNot { it.id == album.id }
+        _albums.value = remainingAlbums
+
+        val artist = _artists.value.find { it.id == album.artistId }
+        if (artist != null) {
+            // Check if this is the artist's only album AND if there are no tracks assigned to this artist
+            // that still exist in _tracks but are not part of the album being deleted
+            val hasOnlyThisAlbum = artist.albumIds.count() == 1
+            val artistTracksNotInAlbum = _tracks.value.any { track ->
+                track.artistId == artist.id && track.id !in album.trackIds
+            }
+
+            if (hasOnlyThisAlbum && !artistTracksNotInAlbum) {
+                val remainingArtists = _artists.value.filterNot { it.id == artist.id }
+                _artists.value = remainingArtists
+            }
+        }
+    }
+
+    fun deleteArtistFromLibrary(artist: Artist) {
+        val remainingTracks = _tracks.value.filterNot { it.artistId == artist.id }
+        _tracks.value = remainingTracks
+
+        val remainingAlbums = _albums.value.filterNot { it.artistId == artist.id }
+        _albums.value = remainingAlbums
+
+        val remainingArtists = _artists.value.filterNot { it.id == artist.id }
+        _artists.value = remainingArtists
     }
 
     fun restoreTracks(tracks: List<Track>) {

@@ -75,7 +75,7 @@ fun SearchScreen(nav: NavController) {
                         onOpenMenu = { menuForTrackId = t.id },
                         onDismissMenu = { if (menuForTrackId == t.id) menuForTrackId = null },
                         onPlay = {
-                            ServiceLocator.playbackController.loadAndPlay(listOf(t))
+                            ServiceLocator.playbackService.loadAndPlay(listOf(t))
                             nav.navigate(Routes.PLAYER)
                             menuForTrackId = null
                         },

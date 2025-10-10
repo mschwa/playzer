@@ -33,8 +33,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.scanner.AudioFileScanner
-import com.thorfio.playzer.data.scanner.MusicScannerService
-import com.thorfio.playzer.ui.navigation.Routes
+import com.thorfio.playzer.services.MusicScannerService
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -212,7 +211,7 @@ fun SettingsScreen(
                                 isDirectLoading = true
                                 scope.launch {
                                     try {
-                                        val filesFound = com.thorfio.playzer.data.scanner.DirectFileLoader.loadFilesFromFolder(context)
+                                        val filesFound = com.thorfio.playzer.data.scanner.DirectFileLoader.scanMusicFolder(context)
                                         if (filesFound > 0) {
                                             Toast.makeText(context, "Found $filesFound audio files", Toast.LENGTH_SHORT).show()
                                         } else {
