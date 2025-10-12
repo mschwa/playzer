@@ -6,12 +6,20 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.thorfio.playzer.core.ServiceLocator
+import com.thorfio.playzer.observers.ActivityLifecycleObserver
+import com.thorfio.playzer.services.LifecycleEventLogger
 import com.thorfio.playzer.ui.AppRoot
 import com.thorfio.playzer.ui.theme.PlayzerTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize activity lifecycle tracking
+        val eventLogger = LifecycleEventLogger.getInstance(this)
+        val activityObserver = ActivityLifecycleObserver(eventLogger, "MainActivity")
+        lifecycle.addObserver(activityObserver)
+
         val themePrefs = ServiceLocator.themePreferences
         setContent {
             val dark by themePrefs.darkThemeFlow.collectAsState(initial = false)

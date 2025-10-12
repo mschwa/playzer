@@ -11,4 +11,5 @@ object Routes {
     const val CREATE_PLAYLIST = "createPlaylist/{trackIds}" // optional trackIds comma separated (may be empty)
     const val SETTINGS = "settings"
     const val EQUALIZER = "equalizer"
+    const val EVENT_LOG = "eventLog"
 }

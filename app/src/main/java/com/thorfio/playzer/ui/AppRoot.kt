@@ -15,17 +15,20 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.thorfio.playzer.services.LifecycleEventLogger
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.screens.AddToPlaylistScreen
 import com.thorfio.playzer.ui.screens.AlbumScreen
 import com.thorfio.playzer.ui.screens.ArtistScreen
 import com.thorfio.playzer.ui.screens.CreatePlaylistScreen
 import com.thorfio.playzer.ui.screens.EqualizerScreen
+import com.thorfio.playzer.ui.screens.EventLogScreen
 import com.thorfio.playzer.ui.screens.MainScreen
 import com.thorfio.playzer.ui.screens.PlayerScreen
 import com.thorfio.playzer.ui.screens.PlaylistScreen
@@ -59,6 +62,10 @@ fun AppRoot(
                     scope.launch { drawerState.close() }
                     navController.navigate(Routes.EQUALIZER)
                 })
+                NavigationDrawerItem(label = { Text("Event Log") }, selected = false, onClick = {
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Routes.EVENT_LOG)
+                })
             }
         }
     ) {
@@ -86,6 +93,8 @@ private fun AppNavHost(
     drawerState: DrawerState, // Receive drawer state
     scope: CoroutineScope // Receive coroutine scope
 ) {
+    val context = LocalContext.current
+
     NavHost(
         navController = navController,
         startDestination = Routes.MAIN,
@@ -96,6 +105,13 @@ private fun AppNavHost(
         composable(Routes.PLAYER) { PlayerScreen(navController) }
         composable(Routes.SETTINGS) { SettingsScreen(navController, dark, dynamic, onToggleDark, onToggleDynamic) }
         composable(Routes.EQUALIZER) { EqualizerScreen(navController) }
+        composable(Routes.EVENT_LOG) {
+            val eventLogger = LifecycleEventLogger.getInstance(context)
+            EventLogScreen(
+                eventLogger = eventLogger,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
         // Param screens simplified placeholders
         composable(Routes.PLAYLIST) { backStack -> PlaylistScreen(navController, playlistId = backStack.arguments?.getString("playlistId") ?: "") }
         composable(Routes.ARTIST) { backStack -> ArtistScreen(navController, artistId = backStack.arguments?.getString("artistId") ?: "") }

@@ -93,7 +93,7 @@ class MusicScannerService : Service() {
             try {
                 val scanner = AudioFileScanner(
                     context = applicationContext,
-                    musicRepository = ServiceLocator.musicRepository,
+                    musicRepositorMe = ServiceLocator.musicRepository,
                     preferencesRepository = ServiceLocator.appPreferencesRepository
                 )
 

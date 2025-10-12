@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.data.persistence.AppPreferencesRepository
 import com.thorfio.playzer.data.persistence.MusicRepository
@@ -17,7 +18,7 @@ import java.time.Instant
  */
 class AudioFileScanner(
     private val context: Context,
-    private val musicRepository: MusicRepository,
+    private val musicRepositorMe: MusicRepository,
     private val preferencesRepository: AppPreferencesRepository
 ) {
     private val scannedFiles = mutableMapOf<String, String>() // uri -> trackId
@@ -26,6 +27,7 @@ class AudioFileScanner(
     suspend fun scanMusicFolder(): Int = withContext(Dispatchers.IO) {
 
         val prefsRepository = preferencesRepository
+        val musicRepository = musicRepositorMe
 
         val musicFolderUri = preferencesRepository.musicFolderPath.first()
 
@@ -44,7 +46,6 @@ class AudioFileScanner(
                 return@withContext -1
             }
 
-            Log.d(TAG, "Root directory access confirmed: ${rootFolder.uri}")
             val prevScannedFiles = scannedFiles.toMap() // Copy of current map for comparison
             scannedFiles.clear()
 
@@ -66,7 +67,7 @@ class AudioFileScanner(
 
             if (removedTrackIds.isNotEmpty()) {
                 Log.d(TAG, "Removing ${removedTrackIds.size} tracks that no longer exist")
-                musicRepository.deleteTracks(removedTrackIds)
+                musicRepositorMe.deleteTracks(removedTrackIds)
             }
 
             if (discoveredTracks.isNotEmpty()) {
@@ -78,7 +79,7 @@ class AudioFileScanner(
                 Log.d(TAG, "Updating repository with: ${discoveredTracks.size} tracks, ${albums.size} albums, ${artists.size} artists")
 
                 // Update repository with new data
-                musicRepository.updateLibrary(discoveredTracks, albums, artists)
+                musicRepositorMe.updateLibrary(discoveredTracks, albums, artists)
 
                 // Update timestamp of last scan
                 prefsRepository.updateLastScanTimestamp(Instant.now().toEpochMilli())
@@ -94,64 +95,6 @@ class AudioFileScanner(
             Log.e(TAG, "Error scanning music folder", e)
             e.printStackTrace()
             return@withContext -1
-        }
-    }
-    companion object {
-
-        // Static function to help debugging
-        suspend fun testScanDirectory(context: Context): String {
-            val prefsRepo = com.thorfio.playzer.core.ServiceLocator.appPreferencesRepository
-            val musicFolderUri = prefsRepo.musicFolderPath.first()
-
-            if (musicFolderUri == null) {
-                return "No music folder selected"
-            }
-
-            val uri = musicFolderUri.toUri()
-            val stringBuilder = StringBuilder()
-            stringBuilder.append("Testing scan of: $musicFolderUri\n")
-
-            try {
-                val rootDir = DocumentFile.fromTreeUri(context, uri)
-                if (rootDir == null) {
-                    return "Failed to access root directory"
-                }
-
-                if (!rootDir.exists()) {
-                    return "Root directory does not exist"
-                }
-
-                if (!rootDir.isDirectory) {
-                    return "Not a directory"
-                }
-
-                val files = rootDir.listFiles()
-                stringBuilder.append("Found ${files.size} items in root directory:\n")
-
-                var audioCount = 0
-
-                files.forEach { file ->
-                    val name = file.name ?: "unknown"
-                    val type = file.type ?: "unknown type"
-                    val isDir = if (file.isDirectory) "DIR" else "FILE"
-                    stringBuilder.append("- $name ($isDir) [$type]\n")
-
-                    // Count audio files
-                    if (AudioFileUtils.isAudioFile(file)) {
-                        audioCount++
-                    }
-                }
-
-                stringBuilder.append("\nTotal audio files found: $audioCount")
-
-                Log.d("AudioFileTester", stringBuilder.toString())
-                return stringBuilder.toString()
-
-            } catch (e: Exception) {
-                stringBuilder.append("Error: ${e.message}")
-                Log.e("AudioFileTester", "Error scanning", e)
-                return stringBuilder.toString()
-            }
         }
     }
 }
