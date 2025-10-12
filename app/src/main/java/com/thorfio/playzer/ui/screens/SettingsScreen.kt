@@ -36,6 +36,8 @@ import com.thorfio.playzer.data.scanner.AudioFileScanner
 import com.thorfio.playzer.services.MusicScannerService
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
+import kotlin.math.log
 
 @Composable
 fun SettingsScreen(
@@ -54,7 +56,7 @@ fun SettingsScreen(
     var dynamicEnabled by remember(dynamicEnabledCurrent) { mutableStateOf(dynamicEnabledCurrent) }
     var musicFolder by remember { mutableStateOf<String?>(null) }
     var isScanning by remember { mutableStateOf(false) }
-    var lastScanTimestamp by remember { mutableStateOf(0L) }
+    var lastScanTimestamp by remember { mutableLongStateOf(0L) }
 
     // Load preferences
     LaunchedEffect(Unit) {
@@ -123,13 +125,9 @@ fun SettingsScreen(
 
                     if (musicFolder != null) {
                         val folderName = remember(musicFolder) {
-                            try {
-                                val uri = Uri.parse(musicFolder)
-                                val docFile = DocumentFile.fromTreeUri(context, uri)
-                                docFile?.name ?: "Selected Folder"
-                            } catch (e: Exception) {
-                                "Selected Folder"
-                            }
+                            val uri = musicFolder!!.toUri()
+                            val docFile = DocumentFile.fromTreeUri(context, uri)
+                            docFile?.name ?: "Selected Folder"
                         }
 
                         Text(
@@ -168,6 +166,7 @@ fun SettingsScreen(
                                         try {
                                             // Use the new method that forces a scan immediately
                                             MusicScannerService.startScanNow(context)
+                                            com.thorfio.playzer.data.scanner.DirectFileLoader.scanMusicFolder(context)
                                             // Artificial delay to show scanning state
                                             kotlinx.coroutines.delay(1000)
                                             lastScanTimestamp = prefsRepository.lastScanTimestamp.first()
@@ -228,52 +227,6 @@ fun SettingsScreen(
                         enabled = musicFolder != null && !isDirectLoading
                     ) {
                         Text(if (isDirectLoading) "Loading files..." else "Direct Load Files")
-                    }
-
-                    // Debug section
-                    var debugResult by remember { mutableStateOf("") }
-                    var isTestingFolder by remember { mutableStateOf(false) }
-
-                    if (musicFolder != null) {
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        FilledTonalButton(
-                            onClick = {
-                                if (!isTestingFolder) {
-                                    isTestingFolder = true
-                                    scope.launch {
-                                        try {
-                                            debugResult = AudioFileScanner.testScanDirectory(context)
-                                        } catch (e: Exception) {
-                                            debugResult = "Error: ${e.message}\n${e.stackTraceToString()}"
-                                        } finally {
-                                            isTestingFolder = false
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isTestingFolder
-                        ) {
-                            Text(if (isTestingFolder) "Testing folder..." else "Debug: Test Folder Access")
-                        }
-
-                        if (debugResult.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Debug Results:",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary)
-
-                            OutlinedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    debugResult,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
-                        }
                     }
                 }
             }
