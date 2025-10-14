@@ -44,7 +44,7 @@ fun AlbumsPanel(
     onAddToPlaylist: (Album) -> Unit,
     onDelete: (Album) -> Unit
 ) {
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     var menuForId by remember { mutableStateOf<String?>(null) }
     LazyColumn(Modifier.fillMaxSize()) {
         stickyHeader { if (sortControls != null) sortControls() }

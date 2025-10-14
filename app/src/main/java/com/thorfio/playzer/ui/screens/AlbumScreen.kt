@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumScreen(nav: NavController, albumId: String) {
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     val album = repo.albums.collectAsState().value.firstOrNull { it.id == albumId }
     val tracks: List<Track> = album?.trackIds?.let { repo.tracksByIds(it) } ?: emptyList()
     val context = LocalContext.current

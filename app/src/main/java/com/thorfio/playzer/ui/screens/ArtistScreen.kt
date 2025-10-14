@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArtistScreen(nav: NavController, artistId: String) {
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     val artist = repo.artists.collectAsState().value.firstOrNull { it.id == artistId }
     val albums = repo.albums.collectAsState().value.filter { it.artistId == artistId }
     val tracks: List<Track> = artist?.trackIds?.let { repo.tracksByIds(it) } ?: emptyList()

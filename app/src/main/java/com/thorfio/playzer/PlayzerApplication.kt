@@ -29,7 +29,7 @@ class PlayzerApplication : Application() {
 
     private fun initLifecycleLogging() {
         val eventLogger = LifecycleEventLogger.getInstance(this)
-        AppLifecycleObserver.register(eventLogger)
+        AppLifecycleObserver.register(eventLogger, this)
     }
 
     fun initMusicScanning() {

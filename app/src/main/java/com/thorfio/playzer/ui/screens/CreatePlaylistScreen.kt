@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
     val playlistStore = ServiceLocator.playlistStore
-    val musicRepo = ServiceLocator.musicRepository
+    val musicRepo = ServiceLocator.musicLibrary
     val tracksState = musicRepo.tracks.collectAsState()
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(TextFieldValue("")) }

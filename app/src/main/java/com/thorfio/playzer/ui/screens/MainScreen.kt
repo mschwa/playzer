@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
-import com.thorfio.playzer.data.model.Playlist
 import com.thorfio.playzer.data.model.Track
 import com.thorfio.playzer.ui.navigation.Routes
 import com.thorfio.playzer.ui.screens.main.AlbumSortOrder
@@ -66,7 +65,7 @@ fun MainScreen(
     scope: CoroutineScope
 ) {
     // Services and repositories
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     val tracks by repo.tracks.collectAsState()
     val albums by repo.albums.collectAsState()
     val artists by repo.artists.collectAsState()

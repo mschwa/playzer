@@ -2,82 +2,57 @@ package com.thorfio.playzer.data.scanner
 
 import android.content.Context
 import android.util.Log
-import androidx.core.net.toUri
-import androidx.documentfile.provider.DocumentFile
 import com.thorfio.playzer.core.ServiceLocator
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /**
- * Used to scan the file system for audio files
+ * Direct file loader using MediaStore API - replaces DocumentFile approach
  */
 object DirectFileLoader {
     private const val TAG = "DirectFileLoader"
 
-    suspend fun scanMusicFolder(context: Context): Int = withContext(Dispatchers.IO) {
+    /**
+     * Scans the music library using MediaStore API
+     */
+    suspend fun scanMusicFolder(context: Context): String = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Starting MediaStore music scan...")
 
-        val prefsRepository = ServiceLocator.appPreferencesRepository
-        val musicRepository = ServiceLocator.musicRepository
+        try {
+            val (tracks, albums, artists) = MediaStoreAudioScanner.scanAudioFiles(context)
 
-        val musicFolderUri = prefsRepository.musicFolderPath.first()
-
-        if (musicFolderUri.isNullOrEmpty()) {
-            Log.w(TAG, "No music folder selected")
-            return@withContext -1
-        }
-
-        try
-        {
-            val uri = musicFolderUri.toUri()
-            val rootFolder = DocumentFile.fromTreeUri(context, uri)
-
-            if (rootFolder == null || !rootFolder.exists() || !rootFolder.isDirectory) {
-                Log.e(TAG, "Invalid root folder: $musicFolderUri")
-                return@withContext -1
-            }
-
-            Log.d(TAG, "Starting scan of music folder: $musicFolderUri")
-
-            val discoveredTracks = mutableListOf<com.thorfio.playzer.data.model.Track>()
-            val artistMap = mutableMapOf<String, MutableList<String>>() // artistName -> trackIds
-            val albumMap = mutableMapOf<String, AudioFileUtils.AlbumInfo>() // albumName+artistName -> info
-
-            // Scan the directory and its subdirectories for audio files
-            AudioFileUtils.scanDirectory(context, rootFolder, discoveredTracks, artistMap, albumMap)
-
-            Log.d(TAG, "Scan completed. Found ${discoveredTracks.size} tracks")
-
-            if (discoveredTracks.isNotEmpty()) {
-                // Create artists and albums from the data
-                val artists = AudioFileUtils.createArtists(artistMap, albumMap)
-                val albums = AudioFileUtils.createAlbums(albumMap)
-
-                // Log the data we're about to update to the repository
-                Log.d(TAG, "Updating repository with: ${discoveredTracks.size} tracks, ${albums.size} albums, ${artists.size} artists")
-
-                // Update the repository with the new data
-                musicRepository.updateLibrary(discoveredTracks, albums, artists)
-
-                // Force UI update
-                withContext(Dispatchers.Main) {
-                    Log.d(TAG, "Forcing repository refresh")
-                    musicRepository.notifyDataChanged()
-                }
-
-                // Update the timestamp in preferences
-                prefsRepository.updateLastScanTimestamp(System.currentTimeMillis())
-
-                return@withContext discoveredTracks.size
-            }
-            else {
-                Log.w(TAG, "No audio files found in folder")
-                return@withContext 0
+            if (tracks.isNotEmpty()) {
+                ServiceLocator.musicLibrary.updateLibrary(tracks, albums, artists)
+                val message = "MediaStore scan completed: ${tracks.size} tracks, ${albums.size} albums, ${artists.size} artists"
+                Log.d(TAG, message)
+                return@withContext message
+            } else {
+                val message = "No audio files found in MediaStore"
+                Log.w(TAG, message)
+                return@withContext message
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error scanning music folder", e)
-            e.printStackTrace()
-            return@withContext -1
+            val message = "MediaStore scan failed: ${e.message}"
+            Log.e(TAG, message, e)
+            return@withContext message
+        }
+    }
+
+    /**
+     * Quick scan that loads cached data first, then scans in background
+     */
+    suspend fun quickScan(context: Context): String = withContext(Dispatchers.IO) {
+        try {
+            // Try to load cached data first
+            ServiceLocator.musicLibrary.loadFromDisk(context)
+
+            // Then perform MediaStore scan in background
+            val result = scanMusicFolder(context)
+
+            return@withContext "Quick scan completed. $result"
+        } catch (e: Exception) {
+            Log.e(TAG, "Quick scan failed", e)
+            return@withContext "Quick scan failed: ${e.message}"
         }
     }
 }

@@ -1,18 +1,23 @@
 package com.thorfio.playzer.observers
 
+import android.content.Context
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.LifecycleEventType
 import com.thorfio.playzer.services.LifecycleEventLogger
 import kotlinx.coroutines.launch
 
-class AppLifecycleObserver(private val eventLogger: LifecycleEventLogger) : DefaultLifecycleObserver {
+class AppLifecycleObserver(
+    private val eventLogger: LifecycleEventLogger,
+    private val context: Context
+) : DefaultLifecycleObserver {
 
     companion object {
-        fun register(eventLogger: LifecycleEventLogger) {
-            val observer = AppLifecycleObserver(eventLogger)
+        fun register(eventLogger: LifecycleEventLogger, context: Context) {
+            val observer = AppLifecycleObserver(eventLogger, context)
             ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
         }
     }
@@ -49,6 +54,13 @@ class AppLifecycleObserver(private val eventLogger: LifecycleEventLogger) : Defa
         super.onStop(owner)
         ProcessLifecycleOwner.get().lifecycleScope.launch {
             eventLogger.logEvent(LifecycleEventType.APP_STOPPED, "Application moved to background")
+
+            // Save MusicRepository data to disk when app goes to background
+            try {
+                ServiceLocator.musicLibrary.saveToDisk(context)
+            } catch (e: Exception) {
+                android.util.Log.e("AppLifecycleObserver", "Failed to save music library to disk", e)
+            }
         }
     }
 

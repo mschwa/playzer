@@ -87,7 +87,7 @@ import kotlinx.coroutines.launch
 fun PlaylistScreen(nav: NavController, playlistId: String) {
 
     val playlistStore = ServiceLocator.playlistStore
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     val playlistsState = playlistStore.playlists.collectAsState()
     val tracksState = repo.tracks.collectAsState()
     val playlist = playlistsState.value.firstOrNull { it.id == playlistId }

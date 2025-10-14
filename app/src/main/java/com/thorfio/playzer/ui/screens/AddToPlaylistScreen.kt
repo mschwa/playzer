@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
     val playlistStore = ServiceLocator.playlistStore
-    val musicRepo = ServiceLocator.musicRepository
+    val musicRepo = ServiceLocator.musicLibrary
     val playlists by playlistStore.playlists.collectAsState()
     val tracksState = musicRepo.tracks.collectAsState()
     var showCreate by remember { mutableStateOf(false) }

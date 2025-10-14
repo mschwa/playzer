@@ -6,7 +6,7 @@ import com.thorfio.playzer.services.TrackDeletionService
 import com.thorfio.playzer.data.persistence.PlaylistStore
 import com.thorfio.playzer.data.persistence.AppPreferencesRepository
 import com.thorfio.playzer.data.queue.InternalQueue
-import com.thorfio.playzer.data.persistence.MusicRepository
+import com.thorfio.playzer.data.persistence.MusicLibrary
 import com.thorfio.playzer.data.persistence.ThemePreferencesRepository
 
 /** Simple manual DI / service locator. */
@@ -14,7 +14,7 @@ object ServiceLocator {
     lateinit var appContext: Context
         private set
 
-    val musicRepository: MusicRepository by lazy { MusicRepository() }
+    val musicLibrary: MusicLibrary by lazy { MusicLibrary() }
     val playlistStore: PlaylistStore by lazy { PlaylistStore(appContext) }
     val internalQueue: InternalQueue by lazy { InternalQueue(appContext) }
     val playbackService: PlaybackService by lazy {
@@ -24,7 +24,7 @@ object ServiceLocator {
         TrackDeletionService(
             appContext,
             internalQueue,
-            musicRepository,
+            musicLibrary,
             playlistStore
         )
     }

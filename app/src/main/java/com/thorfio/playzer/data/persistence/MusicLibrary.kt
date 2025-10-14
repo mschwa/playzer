@@ -1,5 +1,6 @@
 package com.thorfio.playzer.data.persistence
 
+import android.content.Context
 import android.util.Log
 import com.thorfio.playzer.data.model.Album
 import com.thorfio.playzer.data.model.Artist
@@ -7,11 +8,24 @@ import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import java.io.File
+import java.io.IOException
+
+@Serializable
+data class MusicLibraryData(
+    val tracks: List<Track>,
+    val albums: List<Album>,
+    val artists: List<Artist>
+)
 
 /** In memory repository for managing music library data. */
-class MusicRepository {
+class MusicLibrary {
     companion object {
         private const val TAG = "MusicRepository"
+        private const val LIBRARY_CACHE_FILE = "music_library_cache.json"
     }
 
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
@@ -205,5 +219,55 @@ class MusicRepository {
         _tracks.value = _tracks.value
         _albums.value = _albums.value
         _artists.value = _artists.value
+    }
+
+    /**
+     * Saves the current music library data to disk as JSON
+     */
+    suspend fun saveToDisk(context: Context) {
+        try {
+            val libraryData = MusicLibraryData(
+                tracks = _tracks.value,
+                albums = _albums.value,
+                artists = _artists.value
+            )
+
+            val json = Json.encodeToString(libraryData)
+            val file = File(context.filesDir, LIBRARY_CACHE_FILE)
+            file.writeText(json)
+
+            Log.d(TAG, "Music library saved to disk: ${_tracks.value.size} tracks, ${_albums.value.size} albums, ${_artists.value.size} artists")
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to save music library to disk", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error saving music library", e)
+        }
+    }
+
+    /**
+     * Loads music library data from disk if available
+     */
+    suspend fun loadFromDisk(context: Context) {
+        try {
+            val file = File(context.filesDir, LIBRARY_CACHE_FILE)
+            if (!file.exists()) {
+                Log.d(TAG, "No cached music library found")
+                return
+            }
+
+            val json = file.readText()
+            val libraryData = Json.decodeFromString<MusicLibraryData>(json)
+
+            _tracks.value = libraryData.tracks
+            _albums.value = libraryData.albums
+            _artists.value = libraryData.artists
+
+            hasLoadedData = true
+            Log.d(TAG, "Music library loaded from disk: ${libraryData.tracks.size} tracks, ${libraryData.albums.size} albums, ${libraryData.artists.size} artists")
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to load music library from disk", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error loading music library", e)
+        }
     }
 }

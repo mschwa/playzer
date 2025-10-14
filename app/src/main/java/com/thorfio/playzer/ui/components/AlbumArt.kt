@@ -6,14 +6,12 @@ import android.media.MediaMetadataRetriever
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -24,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -92,7 +89,7 @@ fun TrackAlbumArt(
     squareCorners: Boolean = false  // New parameter to control if corners should be square (90 degrees)
 ) {
     val context = LocalContext.current
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     rememberCoroutineScope()
 
     // Get fileUri from track or from album's first track

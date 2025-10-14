@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.first
 import java.time.Instant
 
 /**
- * Background service that handles scanning the file system for audio files
+ * Background service that handles scanning audio files using MediaStore API
  */
 class MusicScannerService : Service() {
     companion object {
@@ -27,17 +27,7 @@ class MusicScannerService : Service() {
          * Starts the music scanner service if conditions are met
          */
         suspend fun startScanIfNeeded(context: Context) {
-            // Get dependencies
             val preferencesRepository = ServiceLocator.appPreferencesRepository
-
-            // Check if music folder is set
-            val musicFolder = preferencesRepository.musicFolderPath.first()
-            if (musicFolder.isNullOrEmpty()) {
-                Log.w(TAG, "No music folder set, skipping scan")
-                return
-            }
-
-            Log.d(TAG, "Music folder is set to: $musicFolder")
 
             // Check last scan time to avoid too frequent scans
             val lastScan = preferencesRepository.lastScanTimestamp.first()
@@ -49,8 +39,9 @@ class MusicScannerService : Service() {
                 return
             }
 
-            // Start the service
-            Log.i(TAG, "Starting music scanner service")
+            Log.d(TAG, "Starting MediaStore-based music scan...")
+
+            // Start the service with scan action
             val intent = Intent(context, MusicScannerService::class.java).apply {
                 action = ACTION_SCAN
             }
@@ -58,92 +49,74 @@ class MusicScannerService : Service() {
         }
 
         /**
-         * Forces a scan regardless of the time threshold
+         * Cancels any running scan
          */
-        fun startScanNow(context: Context) {
-            Log.i(TAG, "Forcing immediate music scan")
+        fun cancelScan(context: Context) {
             val intent = Intent(context, MusicScannerService::class.java).apply {
-                action = ACTION_SCAN
+                action = ACTION_CANCEL
             }
             context.startService(intent)
         }
     }
 
+    private var scanJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var isScanning = false
+
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_SCAN -> startScan()
             ACTION_CANCEL -> cancelScan()
+            else -> {
+                Log.w(TAG, "Unknown action: ${intent?.action}")
+                stopSelf()
+            }
         }
         return START_NOT_STICKY
     }
 
     private fun startScan() {
-        if (isScanning) {
-            Log.d(TAG, "Scan already in progress, ignoring duplicate request")
+        if (scanJob?.isActive == true) {
+            Log.d(TAG, "Scan already in progress")
             return
         }
 
-        isScanning = true
-        Log.i(TAG, "Starting music scan")
-
-        serviceScope.launch {
+        scanJob = serviceScope.launch {
             try {
-                val scanner = AudioFileScanner(
-                    context = applicationContext,
-                    musicRepositorMe = ServiceLocator.musicRepository,
-                    preferencesRepository = ServiceLocator.appPreferencesRepository
-                )
+                Log.d(TAG, "Starting MediaStore scan...")
 
-                val filesScanned = scanner.scanMusicFolder()
+                val result = AudioFileScanner.scanAndUpdateLibrary(applicationContext)
 
-                if (filesScanned > 0) {
-                    Log.i(TAG, "Scan complete, found $filesScanned files")
-                    // Force the UI to refresh on the main thread
-                    withContext(Dispatchers.Main) {
-                        Log.d(TAG, "Forcing repository data refresh")
-                        ServiceLocator.musicRepository.notifyDataChanged()
+                if (result.success) {
+                    Log.d(TAG, "Scan completed successfully: ${result.message}")
 
-                        // Additional delay to ensure UI updates
-                        delay(300)
-
-                        // Notify again to ensure updates are applied
-                        ServiceLocator.musicRepository.notifyDataChanged()
-                    }
-                } else if (filesScanned == 0) {
-                    Log.w(TAG, "Scan complete, but no audio files were found")
+                    // Update last scan timestamp
+                    val preferencesRepository = ServiceLocator.appPreferencesRepository
+                    preferencesRepository.updateLastScanTimestamp(Instant.now().toEpochMilli())
                 } else {
-                    Log.e(TAG, "Scan failed with result code: $filesScanned")
+                    Log.e(TAG, "Scan failed: ${result.message}")
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error during music scan", e)
-                e.printStackTrace()
+                Log.e(TAG, "Error during scan", e)
             } finally {
-                isScanning = false
                 stopSelf()
             }
         }
     }
 
     private fun cancelScan() {
-        if (isScanning) {
-            Log.i(TAG, "Cancelling ongoing music scan")
-            serviceScope.coroutineContext.cancelChildren()
-            isScanning = false
-        }
+        scanJob?.cancel()
+        scanJob = null
+        Log.d(TAG, "Scan cancelled")
         stopSelf()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
     override fun onDestroy() {
         super.onDestroy()
-        if (isScanning) {
-            Log.w(TAG, "Service destroyed while scan was in progress")
-        }
+        scanJob?.cancel()
         serviceScope.cancel()
+        Log.d(TAG, "MusicScannerService destroyed")
     }
 }

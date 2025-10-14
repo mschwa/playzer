@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SearchScreen(nav: NavController) {
     var query by remember { mutableStateOf("") }
-    val repo = ServiceLocator.musicRepository
+    val repo = ServiceLocator.musicLibrary
     val (tracks, albums, artists) = remember(query, repo.tracks.collectAsState().value) { repo.search(query) }
 
     var tracksExpanded by remember { mutableStateOf(true) }
@@ -122,7 +122,7 @@ fun SearchScreen(nav: NavController) {
             confirmButton = {
                 TextButton(onClick = {
                     lastDeletedTrack = track
-                    ServiceLocator.musicRepository.deleteTracks(listOf(track.id))
+                    ServiceLocator.musicLibrary.deleteTracks(listOf(track.id))
                     showDeleteDialog = false
                     pendingDeleteTrack = null
                     scope.launch {
@@ -132,7 +132,7 @@ fun SearchScreen(nav: NavController) {
                             withDismissAction = true
                         )
                         if (res == SnackbarResult.ActionPerformed) {
-                            lastDeletedTrack?.let { ServiceLocator.musicRepository.restoreTracks(listOf(it)) }
+                            lastDeletedTrack?.let { ServiceLocator.musicLibrary.restoreTracks(listOf(it)) }
                         }
                         lastDeletedTrack = null
                     }
