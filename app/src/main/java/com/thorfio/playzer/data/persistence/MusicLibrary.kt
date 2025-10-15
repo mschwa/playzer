@@ -49,11 +49,6 @@ class MusicLibrary {
 
     fun getTrackById(id: Long) = _tracks.value.find { it.id == id }
 
-    /**
-     * Get tracks by their file URIs
-     */
-    fun tracksByFileUris(fileUris: List<String>) = _tracks.value.filter { it.fileUri in fileUris }
-
     fun search(query: String): Triple<List<Track>, List<Album>, List<Artist>> {
         if (query.isBlank()) return Triple(emptyList(), emptyList(), emptyList())
         val q = query.lowercase()
@@ -79,7 +74,7 @@ class MusicLibrary {
         }
     }
 
-    fun deleteTrackFromLibrary(trackId: Long?) {
+    fun removeTrackFromLibrary(trackId: Long?) {
         if (trackId == null) return
         val remainingTracks = _tracks.value.filterNot { it.id == trackId }
         _tracks.value = remainingTracks
@@ -93,7 +88,7 @@ class MusicLibrary {
         }
     }
 
-    fun deleteAlbumFromLibrary(album: Album) {
+    fun removeAlbumFromLibrary(album: Album) {
 
         val remainingTracks = _tracks.value.filterNot { it.id in album.trackIds }
         _tracks.value = remainingTracks
@@ -117,7 +112,7 @@ class MusicLibrary {
         }
     }
 
-    fun deleteArtistFromLibrary(artist: Artist) {
+    fun removeArtistFromLibrary(artist: Artist) {
         val remainingTracks = _tracks.value.filterNot { it.artistId == artist.id }
         _tracks.value = remainingTracks
 
@@ -225,14 +220,12 @@ class MusicLibrary {
     }
 
     /**
-     * Forces a notification that data has changed to trigger UI updates
+     * Clears the entire library data
      */
-    fun notifyDataChanged() {
-        Log.d(TAG, "Forcing data change notification")
-        // Re-emit the current values to trigger observers
-        _tracks.value = _tracks.value
-        _albums.value = _albums.value
-        _artists.value = _artists.value
+    fun clearLibrary() {
+        _tracks.value = emptyList()
+        _albums.value = emptyList()
+        _artists.value = emptyList()
     }
 
     /**

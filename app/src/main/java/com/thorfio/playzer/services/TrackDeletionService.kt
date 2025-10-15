@@ -61,7 +61,7 @@ class TrackDeletionService(
 
             deleteAudioFile(context, track.fileUri)
 
-            musicLibrary.deleteTrackFromLibrary(trackId)
+            musicLibrary.removeTrackFromLibrary(trackId)
 
             // Efficiently update all playlists that contain this track
             // by removing the track in a single operation per playlist
@@ -94,7 +94,7 @@ class TrackDeletionService(
                 .mapNotNull { musicLibrary.getTrackById(it)?.id }
 
             // Delete the album from the repository
-            musicLibrary.deleteAlbumFromLibrary(album)
+            musicLibrary.removeAlbumFromLibrary(album)
 
             // Efficiently update all playlists that contain any of the deleted tracks
             playlistStore.playlists.value.forEach { playlist ->
@@ -128,7 +128,7 @@ class TrackDeletionService(
             }
         }
 
-        musicLibrary.deleteArtistFromLibrary(artist)
+        musicLibrary.removeArtistFromLibrary(artist)
 
         // Collect all file URIs from tracks that belonged to the deleted artist
         val deletedTrackMediaStoreIds = artist.trackIds
