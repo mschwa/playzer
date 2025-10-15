@@ -24,7 +24,7 @@ object AudioFileScanner {
 
             if (tracks.isNotEmpty()) {
                 // Update the music repository
-                ServiceLocator.musicLibrary.updateLibrary(tracks, albums, artists)
+                ServiceLocator.musicLibrary.refreshLibrary(tracks, albums, artists)
                 Log.d(TAG, "Library updated with ${tracks.size} tracks, ${albums.size} albums, ${artists.size} artists")
 
                 return@withContext ScanResult(

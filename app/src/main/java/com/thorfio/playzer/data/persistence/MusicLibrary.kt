@@ -211,6 +211,15 @@ class MusicLibrary {
     }
 
     /**
+     * Updates the entire library with data from scanned files
+     */
+    fun refreshLibrary(newTracks: List<Track>, newAlbums: List<Album>, newArtists: List<Artist>) {
+        _tracks.value = newTracks
+        _albums.value = newAlbums
+        _artists.value = newArtists
+    }
+
+    /**
      * Forces a notification that data has changed to trigger UI updates
      */
     fun notifyDataChanged() {
