@@ -11,13 +11,12 @@ import com.thorfio.playzer.data.model.Artist
 import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 /**
  * MediaStore-based audio file scanner - replaces DocumentFile approach
  */
-object MediaStoreAudioScanner {
-    private const val TAG = "MediaStoreAudioScanner"
+object MediaStoreAudioClient {
+    private const val TAG = "MediaStoreAudioClient"
 
     /**
      * Helper data class for tracking album information during scanning
@@ -26,15 +25,22 @@ object MediaStoreAudioScanner {
         val id: String,
         val title: String,
         val artistName: String,
-        val trackIds: MutableList<String>
+        val trackIds: MutableList<Long>
+    )
+
+    data class ArtistInfo(
+        val id: String,
+        val name: String,
+        val trackIds: MutableList<Long>,
+        val albumIds: MutableList<String>
     )
 
     /**
      * Scans for audio files using MediaStore API
      */
-    suspend fun scanAudioFiles(context: Context): Triple<List<Track>, List<Album>, List<Artist>> = withContext(Dispatchers.IO) {
+    suspend fun getObjectsFromMediaStore(context: Context): Triple<List<Track>, List<Album>, List<Artist>> = withContext(Dispatchers.IO) {
         val tracks = mutableListOf<Track>()
-        val artistMap = mutableMapOf<String, MutableList<String>>()
+        val artistMap = mutableMapOf<String, ArtistInfo>()
         val albumMap = mutableMapOf<String, AlbumInfo>()
 
         val projection = arrayOf(
@@ -70,7 +76,7 @@ object MediaStoreAudioScanner {
 
         // Create albums and artists from the collected data
         val albums = createAlbumsFromMap(albumMap)
-        val artists = createArtistsFromMap(artistMap, albums)
+        val artists = createArtistsFromMap(artistMap)
 
         Log.d(TAG, "Scan complete: ${tracks.size} tracks, ${albums.size} albums, ${artists.size} artists")
         return@withContext Triple(tracks, albums, artists)
@@ -82,7 +88,7 @@ object MediaStoreAudioScanner {
     private fun processMediaStoreCursor(
         cursor: Cursor,
         tracks: MutableList<Track>,
-        artistMap: MutableMap<String, MutableList<String>>,
+        artistMap: MutableMap<String, ArtistInfo>,
         albumMap: MutableMap<String, AlbumInfo>
     ) {
         try {
@@ -96,7 +102,7 @@ object MediaStoreAudioScanner {
 
             // Create track with MediaStore content URI
             val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-            val trackId = UUID.randomUUID().toString()
+            val trackId = id
             val artistId = artist.toArtistId()
             val albumId = "$album:$artist".toAlbumId()
 
@@ -114,13 +120,18 @@ object MediaStoreAudioScanner {
             )
 
             tracks.add(track)
-            artistMap.getOrPut(artist) { mutableListOf() }.add(trackId)
+
+            val artistInfo = artistMap.getOrPut(artist) {
+               ArtistInfo(artistId, artist, mutableListOf(), mutableListOf())
+            }
+            if(!artistInfo.trackIds.contains(trackId)) artistInfo.trackIds.add(trackId)
+            if (!artistInfo.albumIds.contains(albumId)) artistInfo.albumIds.add(albumId)
 
             val albumKey = "$album:$artist"
             val albumInfo = albumMap.getOrPut(albumKey) {
                 AlbumInfo(albumId, album, artist, mutableListOf())
             }
-            albumInfo.trackIds.add(trackId)
+            if(!albumInfo.trackIds.contains(trackId)) albumInfo.trackIds.add(trackId)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error processing MediaStore cursor", e)
@@ -146,19 +157,13 @@ object MediaStoreAudioScanner {
     /**
      * Creates artists from the artist map and links them to albums
      */
-    private fun createArtistsFromMap(
-        artistMap: Map<String, List<String>>,
-        albums: List<Album>
-    ): List<Artist> {
-        return artistMap.map { (artistName, trackIds) ->
-            val artistId = artistName.toArtistId()
-            val artistAlbums = albums.filter { it.artistId == artistId }
-
+    private fun createArtistsFromMap(artistMap: Map<String, ArtistInfo>): List<Artist> {
+        return artistMap.values.map { artistInfo ->
             Artist(
-                id = artistId,
-                name = artistName,
-                albumIds = artistAlbums.map { it.id },
-                trackIds = trackIds
+                id = artistInfo.id,
+                name = artistInfo.name,
+                albumIds = artistInfo.albumIds.toList(),
+                trackIds = artistInfo.trackIds.toList(),
             )
         }
     }
@@ -197,7 +202,7 @@ object MediaStoreAudioScanner {
                     val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 
                     return@withContext Track(
-                        id = UUID.randomUUID().toString(),
+                        id = id,
                         title = title,
                         artistId = artist.toArtistId(),
                         artistName = artist,

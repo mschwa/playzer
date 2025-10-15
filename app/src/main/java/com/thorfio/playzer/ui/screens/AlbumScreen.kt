@@ -49,7 +49,7 @@ fun AlbumScreen(nav: NavController, albumId: String) {
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
 
     // State for track menu
-    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+    var menuForTrackId by remember { mutableStateOf<Long?>(null) }
 
     // State for album art
     var albumArt by remember { mutableStateOf<ImageBitmap?>(null) }

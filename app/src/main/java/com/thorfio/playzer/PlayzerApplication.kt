@@ -7,7 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.observers.AppLifecycleObserver
 import com.thorfio.playzer.services.LifecycleEventLogger
-import com.thorfio.playzer.services.MusicScannerService
+import com.thorfio.playzer.data.scanner.AudioFileScanner
 import kotlinx.coroutines.launch
 
 class PlayzerApplication : Application() {
@@ -33,24 +33,14 @@ class PlayzerApplication : Application() {
     }
 
     fun initMusicScanning() {
+        // Automatically scan for audio files at startup using MediaStore
         // Use ProcessLifecycleOwner to get a lifecycle-aware coroutine scope
-        // This ensures we don't run scanning in the background when app is not in use
-        lifecycleOwner.lifecycleScope.launch {
-            try {
-                // Start the scanner service if needed
-                MusicScannerService.startScanIfNeeded(applicationContext)
-            } catch (e: Exception) {
-                Log.e("PlayzerApp", "Error starting music scanner", e)
-            }
-        }
-
-        // Automatically scan for audio files at startup using DirectFileLoader
         ProcessLifecycleOwner.get().lifecycleScope.launch {
             try {
-                val result = com.thorfio.playzer.data.scanner.DirectFileLoader.scanMusicFolder(applicationContext)
-                Log.d("PlayzerApp", "DirectFileLoader scan result: $result")
+                val result = AudioFileScanner.scanAndUpdateLibrary(applicationContext)
+                Log.d("PlayzerApp", "Audio scan result: ${result.message}")
             } catch (e: Exception) {
-                Log.e("PlayzerApp", "Error running DirectFileLoader scan", e)
+                Log.e("PlayzerApp", "Error running audio scan", e)
             }
         }
     }

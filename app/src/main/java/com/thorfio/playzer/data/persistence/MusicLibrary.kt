@@ -40,9 +40,9 @@ class MusicLibrary {
     // Track whether we've loaded data from scanning
     private var hasLoadedData = false
 
-    fun tracksByIds(ids: List<String>) = _tracks.value.filter { it.id in ids }
+    fun tracksByIds(ids: List<Long>) = _tracks.value.filter { it.id in ids }
 
-    fun getTrackById(id: String) = _tracks.value.find { it.id == id }
+    fun getTrackById(id: Long) = _tracks.value.find { it.id == id }
 
     /**
      * Get tracks by their file URIs
@@ -59,7 +59,7 @@ class MusicLibrary {
         )
     }
 
-    fun deleteTracks(trackIds: List<String>) {
+    fun deleteTracks(trackIds: List<Long>) {
         if (trackIds.isEmpty()) return
         val idSet = trackIds.toSet()
         val remainingTracks = _tracks.value.filterNot { it.id in idSet }
@@ -74,7 +74,7 @@ class MusicLibrary {
         }
     }
 
-    fun deleteTrackFromLibrary(trackId: String?) {
+    fun deleteTrackFromLibrary(trackId: Long?) {
         if (trackId == null) return
         val remainingTracks = _tracks.value.filterNot { it.id == trackId }
         _tracks.value = remainingTracks

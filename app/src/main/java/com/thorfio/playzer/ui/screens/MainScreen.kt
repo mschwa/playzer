@@ -89,12 +89,12 @@ fun MainScreen(
 
     // Selection state
     var selectionMode by remember { mutableStateOf(false) }
-    val selectedIds = remember { mutableStateListOf<String>() }
+    val selectedIds = remember { mutableStateListOf<Long>() }
 
     // Dialog item pointers
     var renamingPlaylistId by remember { mutableStateOf<String?>(null) }
     var renamePlaylistValue by remember { mutableStateOf("") }
-    var deletingTrackId by remember { mutableStateOf<String?>(null) }
+    var deletingTrackId by remember { mutableStateOf<Long?>(null) }
     var deletingPlaylistId by remember { mutableStateOf<String?>(null) }
     var deletingArtistId by remember { mutableStateOf<String?>(null) }
     var deletingAlbumId by remember { mutableStateOf<String?>(null) }
@@ -259,7 +259,7 @@ fun MainScreen(
                             }
                         },
                         onPlay = { pl ->
-                            val list = repo.tracksByFileUris(pl.fileUris)
+                            val list = repo.tracksByIds(pl.mediaStoreIds)
                             if (list.isNotEmpty()) {
                                 playback.loadAndPlay(list)
                                 nav.navigate(Routes.PLAYER)

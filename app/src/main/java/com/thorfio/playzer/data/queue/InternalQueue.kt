@@ -39,7 +39,7 @@ class InternalQueue(private val context: Context) {
         saveToDisk()
     }
 
-    fun play(trackId: String) {
+    fun play(trackId: Long) {
         val idx = _queue.value.indexOfFirst { it.id == trackId }
         if (idx >= 0) {
             _currentIndex.value = idx

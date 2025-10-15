@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -65,25 +64,25 @@ class PlaylistStore(private val context: Context) {
         persistAsync()
     }
 
-    fun addTracks(id: String, fileUris: List<String>) {
+    fun addTracks(id: String, mediaStoreIds: List<Long>) {
         _playlists.value = _playlists.value.map {
-            if (it.id == id) it.copy(fileUris = (it.fileUris + fileUris).distinct(), lastUpdated = Instant.now().toEpochMilli()) else it
+            if (it.id == id) it.copy(mediaStoreIds = (it.mediaStoreIds + mediaStoreIds).distinct(), lastUpdated = Instant.now().toEpochMilli()) else it
         }
         persistAsync()
     }
 
-    fun removeTrack(id: String, fileUri: String) {
+    fun removeTrack(id: String, mediaStoreId: Long) {
         _playlists.value = _playlists.value.map {
-            if (it.id == id) it.copy(fileUris = it.fileUris.filterNot { uri -> uri == fileUri }, lastUpdated = Instant.now().toEpochMilli()) else it
+            if (it.id == id) it.copy(mediaStoreIds = it.mediaStoreIds.filterNot { trackId -> trackId == mediaStoreId }, lastUpdated = Instant.now().toEpochMilli()) else it
         }
         persistAsync()
     }
 
-    fun removeTracks(id: String, fileUris: List<String>) {
-        if (fileUris.isEmpty()) return
+    fun removeTracks(id: String, mediaStoreIds: List<Long>) {
+        if (mediaStoreIds.isEmpty()) return
         _playlists.value = _playlists.value.map { pl ->
             if (pl.id == id) pl.copy(
-                fileUris = pl.fileUris.filterNot { it in fileUris },
+                mediaStoreIds = pl.mediaStoreIds.filterNot { it in mediaStoreIds },
                 lastUpdated = Instant.now().toEpochMilli()
             ) else pl
         }
@@ -92,78 +91,75 @@ class PlaylistStore(private val context: Context) {
 
     fun playlist(id: String) = _playlists.value.firstOrNull { it.id == id }
 
-    fun setCover(id: String, fileUri: String?) {
-        _playlists.value = _playlists.value.map { pl -> if (pl.id == id) pl.copy(coverTrackUri = fileUri, lastUpdated = Instant.now().toEpochMilli()) else pl }
+    fun setCover(id: String, mediaStoreId: Long?) {
+        _playlists.value = _playlists.value.map { pl -> if (pl.id == id) pl.copy(coverTrackMediaStoreId = mediaStoreId, lastUpdated = Instant.now().toEpochMilli()) else pl }
         persistAsync()
     }
 
     fun createReturning(name: String): Playlist {
         val now = Instant.now().toEpochMilli()
-        val p = Playlist(id = UUID.randomUUID().toString(), name = name, creationDate = now, lastUpdated = now, coverTrackUri = null)
+        val p = Playlist(id = UUID.randomUUID().toString(), name = name, creationDate = now, lastUpdated = now, coverTrackMediaStoreId = null)
         _playlists.value = _playlists.value + p
         persistAsync()
         return p
     }
 
-    fun createAndAdd(name: String, fileUris: List<String>): Playlist {
+    fun createAndAdd(name: String, mediaStoreIds: List<Long>): Playlist {
         val now = Instant.now().toEpochMilli()
-        val dedup = fileUris.distinct()
+        val dedup = mediaStoreIds.distinct()
         val p = Playlist(
             id = UUID.randomUUID().toString(),
             name = name,
             creationDate = now,
             lastUpdated = now,
-            fileUris = dedup,
-            coverTrackUri = dedup.firstOrNull()
+            mediaStoreIds = dedup,
+            coverTrackMediaStoreId = dedup.firstOrNull()
         )
         _playlists.value = _playlists.value + p
         persistAsync()
         return p
     }
 
-    fun insertTrackAt(id: String, fileUri: String, index: Int) {
+    fun insertTrackAt(id: String, mediaStoreId: Long, index: Int) {
         _playlists.value = _playlists.value.map { pl ->
             if (pl.id == id) {
-                val newList = pl.fileUris.toMutableList()
+                val newList = pl.mediaStoreIds.toMutableList()
                 val safeIndex = index.coerceIn(0, newList.size)
-                if (!newList.contains(fileUri)) {
-                    newList.add(safeIndex, fileUri)
+                if (!newList.contains(mediaStoreId)) {
+                    newList.add(safeIndex, mediaStoreId)
                 }
-                pl.copy(fileUris = newList, lastUpdated = Instant.now().toEpochMilli())
+                pl.copy(mediaStoreIds = newList, lastUpdated = Instant.now().toEpochMilli())
             } else pl
         }
         persistAsync()
     }
 
-    fun moveTrack(id: String, fileUri: String, toIndex: Int) {
+    fun moveTrack(id: String, mediaStoreId: Long, toIndex: Int) {
         _playlists.value = _playlists.value.map { pl ->
             if (pl.id == id) {
-                val currentIdx = pl.fileUris.indexOf(fileUri)
+                val currentIdx = pl.mediaStoreIds.indexOf(mediaStoreId)
                 if (currentIdx == -1) return@map pl
-                val mutable = pl.fileUris.toMutableList()
+                val mutable = pl.mediaStoreIds.toMutableList()
                 mutable.size - 1
                 val targetRaw = toIndex.coerceIn(0, mutable.size) // allow == size for append
                 if (currentIdx != targetRaw) {
                     val item = mutable.removeAt(currentIdx)
                     val safeIndex = if (targetRaw > mutable.size) mutable.size else targetRaw
                     mutable.add(safeIndex, item)
-                    pl.copy(fileUris = mutable, lastUpdated = Instant.now().toEpochMilli(), coverTrackUri = pl.coverTrackUri ?: fileUri)
+                    pl.copy(mediaStoreIds = mutable, lastUpdated = Instant.now().toEpochMilli(),
+                        coverTrackMediaStoreId = pl.coverTrackMediaStoreId ?: mediaStoreId)
                 } else pl
             } else pl
         }
         persistAsync()
     }
 
-    fun updateTrackOrder(playlistId: String, newTrackOrder: List<String>) {
+    fun updateTrackOrder(playlistId: String, newTrackOrder: List<Long>) {
         _playlists.value = _playlists.value.map { pl ->
             if (pl.id == playlistId) {
-                pl.copy(fileUris = newTrackOrder, lastUpdated = Instant.now().toEpochMilli())
+                pl.copy(mediaStoreIds = newTrackOrder, lastUpdated = Instant.now().toEpochMilli())
             } else pl
         }
         persistAsync()
-    }
-
-    fun getFileUris(playlistId: String): List<String> {
-        return _playlists.value.firstOrNull { it.id == playlistId }?.fileUris ?: emptyList()
     }
 }

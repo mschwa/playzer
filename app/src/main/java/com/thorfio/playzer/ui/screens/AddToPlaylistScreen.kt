@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
+fun AddToPlaylistScreen(nav: NavController, trackIds: List<Long>) {
     val playlistStore = ServiceLocator.playlistStore
     val musicRepo = ServiceLocator.musicLibrary
     val playlists by playlistStore.playlists.collectAsState()
@@ -34,7 +34,7 @@ fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
     val fileUris = remember(trackIds, tracksState.value) {
         tracksState.value
             .filter { it.id in trackIds }
-            .map { it.fileUri }
+            .map { it.id }
     }
 
     Scaffold(
@@ -56,7 +56,7 @@ fun AddToPlaylistScreen(nav: NavController, trackIds: List<String>) {
                     ListItem(
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
                         headlineContent = { Text(p.name) },
-                        supportingContent = { Text("${p.fileUris.size} tracks") },
+                        supportingContent = { Text("${p.mediaStoreIds.size} tracks") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(rowColor)

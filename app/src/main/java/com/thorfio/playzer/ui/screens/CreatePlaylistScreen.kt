@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
+fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<Long>) {
     val playlistStore = ServiceLocator.playlistStore
     val musicRepo = ServiceLocator.musicLibrary
     val tracksState = musicRepo.tracks.collectAsState()
@@ -24,7 +24,7 @@ fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
     var creating by remember { mutableStateOf(false) }
     val canCreate = name.text.isNotBlank() && !creating
 
-    // Convert track IDs to file URIs
+    /*// Convert track IDs to file URIs
     val fileUris = remember(prefilledTrackIds, tracksState.value) {
         if (prefilledTrackIds.isEmpty() || prefilledTrackIds.firstOrNull() == "_") {
             emptyList()
@@ -33,7 +33,7 @@ fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
                 .filter { it.id in prefilledTrackIds }
                 .map { it.fileUri }
         }
-    }
+    }*/
 
     Scaffold(topBar = {
         TopAppBar(
@@ -50,15 +50,15 @@ fun CreatePlaylistScreen(nav: NavController, prefilledTrackIds: List<String>) {
                 modifier = Modifier.fillMaxWidth()
             )
             if (prefilledTrackIds.isNotEmpty()) {
-                AssistChip(onClick = {}, label = { Text("Will include ${fileUris.size} track(s)") })
+                AssistChip(onClick = {}, label = { Text("Will include ${prefilledTrackIds.size} track(s)") })
             }
             Button(
                 onClick = {
                     creating = true
                     scope.launch {
-                        val created = if (fileUris.isEmpty()) {
+                        val created = if (prefilledTrackIds.isEmpty()) {
                             playlistStore.createReturning(name.text.trim())
-                        } else playlistStore.createAndAdd(name.text.trim(), fileUris)
+                        } else playlistStore.createAndAdd(name.text.trim(), prefilledTrackIds)
                         nav.popBackStack()
                         nav.navigate(Routes.PLAYLIST.replace("{playlistId}", created.id))
                     }

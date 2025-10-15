@@ -39,7 +39,7 @@ fun SearchScreen(nav: NavController) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+    var menuForTrackId by remember { mutableStateOf<Long?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var pendingDeleteTrack by remember { mutableStateOf<Track?>(null) }
     var lastDeletedTrack by remember { mutableStateOf<Track?>(null) }

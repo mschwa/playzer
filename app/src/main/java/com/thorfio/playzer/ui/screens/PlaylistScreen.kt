@@ -92,7 +92,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
     val tracksState = repo.tracks.collectAsState()
     val playlist = playlistsState.value.firstOrNull { it.id == playlistId }
     val tracks: List<Track> = remember(playlist, tracksState.value) {
-        if (playlist == null) emptyList() else tracksState.value.filter { it.fileUri in (playlist.fileUris) }
+        if (playlist == null) emptyList() else tracksState.value.filter { it.id in (playlist.mediaStoreIds) }
     }
 
     var showRename by remember { mutableStateOf(false) }
@@ -139,12 +139,12 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                     val pl = playlist ?: return@TrackListingForPlaylist
                     val track = tracks.firstOrNull { it.id == trackId } ?: return@TrackListingForPlaylist
                     val fileUri = track.fileUri
-                    val idx = pl.fileUris.indexOf(fileUri)
+                    val idx = pl.mediaStoreIds.indexOf(track.id)
                     lastRemoved = track to idx
-                    playlistStore.removeTrack(pl.id, fileUri)
+                    playlistStore.removeTrack(pl.id, track.id)
                     // If cover removed, update cover to next remaining fileUri
-                    if (pl.coverTrackUri == fileUri) {
-                        val newCover = pl.fileUris.firstOrNull { it != fileUri }
+                    if (pl.coverTrackMediaStoreId == track.id) {
+                        val newCover = pl.mediaStoreIds.firstOrNull { it != track.id }
                         playlistStore.setCover(pl.id, newCover)
                     }
                     scope.launch {
@@ -155,8 +155,8 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
                         )
                         if (res == SnackbarResult.ActionPerformed) {
                             lastRemoved?.let { (tr, originalIndex) ->
-                                playlistStore.insertTrackAt(pl.id, tr.fileUri, originalIndex)
-                                if (pl.coverTrackUri == null) playlistStore.setCover(pl.id, tr.fileUri)
+                                playlistStore.insertTrackAt(pl.id, tr.id, originalIndex)
+                                if (pl.coverTrackMediaStoreId == null) playlistStore.setCover(pl.id, tr.id)
                             }
                         }
                         lastRemoved = null
@@ -201,7 +201,7 @@ fun PlaylistScreen(nav: NavController, playlistId: String) {
 @Composable
 private fun PlaylistHeaderArt(playlist: Playlist?, tracks: List<Track>, nav: NavController) {
     // Get a random track for the background if tracks are available, otherwise use the cover track
-    val coverTrack = tracks.firstOrNull { it.fileUri == playlist?.coverTrackUri } ?: tracks.firstOrNull()
+    val coverTrack = tracks.firstOrNull { it.id == playlist?.coverTrackMediaStoreId } ?: tracks.firstOrNull()
     val randomTrack = remember(tracks) {
         if (tracks.isNotEmpty()) tracks.random() else null
     }
@@ -409,9 +409,9 @@ private fun TrackListingForPlaylist(
     tracks: List<Track>,
     nav: NavController,
     onPlay: (Int) -> Unit,
-    onRemove: (String) -> Unit
+    onRemove: (Long) -> Unit
 ) {
-    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+    var menuForTrackId by remember { mutableStateOf<Long?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val playlistStore = ServiceLocator.playlistStore
@@ -493,8 +493,8 @@ private fun TrackListingForPlaylist(
 
                                         // Update the playlist store with the new order
                                         scope.launch {
-                                            val fileUris = newList.map { it.fileUri }
-                                            playlistStore.updateTrackOrder(playlistId, fileUris)
+                                            val trackIds = newList.map { it.id }
+                                            playlistStore.updateTrackOrder(playlistId, trackIds)
                                         }
                                     }
 

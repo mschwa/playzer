@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
+import androidx.core.net.toUri
 
 /** Simple in-memory artwork cache keyed by fileUri */
 private object ArtworkCache {
@@ -127,7 +128,7 @@ fun TrackAlbumArt(
         val result: ImageBitmap? = withContext(Dispatchers.IO) {
             runCatching {
                 val retriever = MediaMetadataRetriever()
-                retriever.setDataSource(context, android.net.Uri.parse(fileUri))
+                retriever.setDataSource(context, fileUri.toUri())
                 val bytes = retriever.embeddedPicture
                 retriever.release()
                 if (bytes != null) {
@@ -159,7 +160,7 @@ fun TrackAlbumArt(
         val result: ImageBitmap? = withContext(Dispatchers.IO) {
             runCatching {
                 val retriever = MediaMetadataRetriever()
-                retriever.setDataSource(context, android.net.Uri.parse(fileUri))
+                retriever.setDataSource(context, fileUri.toUri())
                 val bytes = retriever.embeddedPicture
                 retriever.release()
                 if (bytes != null) {

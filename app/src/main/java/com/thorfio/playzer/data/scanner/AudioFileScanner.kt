@@ -3,9 +3,6 @@ package com.thorfio.playzer.data.scanner
 import android.content.Context
 import android.util.Log
 import com.thorfio.playzer.core.ServiceLocator
-import com.thorfio.playzer.data.model.Album
-import com.thorfio.playzer.data.model.Artist
-import com.thorfio.playzer.data.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -23,7 +20,7 @@ object AudioFileScanner {
 
         try {
             // Use MediaStore to scan for audio files
-            val (tracks, albums, artists) = MediaStoreAudioScanner.scanAudioFiles(context)
+            val (tracks, albums, artists) = MediaStoreAudioClient.getObjectsFromMediaStore(context)
 
             if (tracks.isNotEmpty()) {
                 // Update the music repository

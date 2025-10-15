@@ -121,9 +121,9 @@ private fun AppNavHost(
     }
 }
 
-private fun parseIds(raw: String?): List<String> = when {
+private fun parseIds(raw: String?): List<Long> = when {
     raw == null -> emptyList()
     raw.isBlank() -> emptyList()
     raw == "_" -> emptyList()
-    else -> raw.split(',').filter { it.isNotBlank() && it != "_" }
+    else -> raw.split(',').filter { it.isNotBlank() && it != "_" }.mapNotNull { it.toLongOrNull() }
 }

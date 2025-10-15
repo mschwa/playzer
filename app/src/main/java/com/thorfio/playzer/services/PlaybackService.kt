@@ -169,7 +169,7 @@ class PlaybackService(
     private fun rebuildPlayerQueue() {
         player.clearMediaItems()
         internalQueue.queue.value.forEach { t ->
-            player.addMediaItem(MediaItem.Builder().setMediaId(t.id).setUri(t.fileUri).setTag(t).build())
+            player.addMediaItem(MediaItem.Builder().setMediaId(t.id.toString()).setUri(t.fileUri).setTag(t).build())
         }
         val idx = internalQueue.currentIndex.value
         if (idx >= 0) player.seekToDefaultPosition(idx)

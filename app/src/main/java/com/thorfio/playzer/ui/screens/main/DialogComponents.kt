@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TrackDeletionDialog(
     showDialog: Boolean,
-    trackId: String?,
+    trackId: Long?,
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
     onDismiss: () -> Unit

@@ -22,7 +22,6 @@ object ServiceLocator {
     }
     val trackDeletionService: TrackDeletionService by lazy {
         TrackDeletionService(
-            appContext,
             internalQueue,
             musicLibrary,
             playlistStore

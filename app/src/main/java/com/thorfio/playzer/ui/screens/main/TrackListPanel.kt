@@ -29,7 +29,7 @@ import com.thorfio.playzer.ui.components.TrackListComponent
 fun TrackListPanel(
     tracks: List<Track>,
     selectionMode: Boolean,
-    selectedIds: List<String>,
+    selectedIds: List<Long>,
     onToggleSelect: (Track) -> Unit,
     onEnterSelection: (Track) -> Unit,
     onRowClick: (Track) -> Unit,
@@ -38,7 +38,7 @@ fun TrackListPanel(
     rowHeight: Dp,
     sortControls: @Composable () -> Unit
 ) {
-    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+    var menuForTrackId by remember { mutableStateOf<Long?>(null) }
 
     LazyColumn(Modifier.fillMaxSize()) {
         stickyHeader { sortControls() }

@@ -25,7 +25,7 @@ import com.thorfio.playzer.ui.navigation.Routes
 
 @Composable
 fun SelectionToolbar(
-    selectedIds: List<String>,
+    selectedIds: List<Long>,
     totalTracks: Int,
     onClearSelection: () -> Unit,
     onToggleSelectAll: () -> Unit,

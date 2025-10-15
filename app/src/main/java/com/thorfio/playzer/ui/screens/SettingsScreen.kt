@@ -32,7 +32,6 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.thorfio.playzer.core.ServiceLocator
 import com.thorfio.playzer.data.scanner.AudioFileScanner
-import com.thorfio.playzer.services.MusicScannerService
 import kotlinx.coroutines.launch
 
 @Composable
@@ -236,20 +235,6 @@ fun SettingsScreen(
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(if (isScanning) "Scanning..." else "Scan Audio Files")
-                    }
-
-                    // Service Controls
-                    FilledTonalButton(
-                        onClick = {
-                            scope.launch {
-                                MusicScannerService.startScanIfNeeded(context)
-                                Toast.makeText(context, "Music scanner service started", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = hasPermission
-                    ) {
-                        Text("Start Background Scanner")
                     }
                 }
             }

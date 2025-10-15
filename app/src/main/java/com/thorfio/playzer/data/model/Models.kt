@@ -6,7 +6,7 @@ import java.util.UUID
 
 @Serializable
 data class Track(
-    val id: String = UUID.randomUUID().toString(),
+    val id: Long = 0,
     val title: String,
     val artistId: String,
     val artistName: String,
@@ -24,8 +24,8 @@ data class Album(
     val title: String,
     val artistId: String,
     val artistName: String,
-    val trackIds: List<String>,
-    val coverTrackId: String?
+    val trackIds: List<Long>,
+    val coverTrackId: Long?
 )
 
 @Serializable
@@ -33,7 +33,7 @@ data class Artist(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val albumIds: List<String>,
-    val trackIds: List<String>
+    val trackIds: List<Long>
 )
 
 @Serializable
@@ -42,8 +42,8 @@ data class Playlist(
     val name: String,
     val creationDate: Long = Instant.now().toEpochMilli(),
     val lastUpdated: Long = creationDate,
-    val coverTrackUri: String? = null,
-    val fileUris: List<String> = emptyList()
+    val coverTrackMediaStoreId: Long? = null,
+    val mediaStoreIds: List<Long> = emptyList()
 )
 
 @Serializable

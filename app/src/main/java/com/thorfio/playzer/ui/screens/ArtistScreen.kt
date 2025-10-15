@@ -46,11 +46,11 @@ fun ArtistScreen(nav: NavController, artistId: String) {
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
 
     // State for track menu
-    var menuForTrackId by remember { mutableStateOf<String?>(null) }
+    var menuForTrackId by remember { mutableStateOf<Long?>(null) }
 
     // State for selection mode
     var selectionMode by remember { mutableStateOf(false) }
-    var selectedIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
 
     Scaffold(
         topBar = {
