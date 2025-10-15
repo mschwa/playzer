@@ -33,6 +33,9 @@ class AppLifecycleObserver(
         super.onStart(owner)
         ProcessLifecycleOwner.get().lifecycleScope.launch {
             eventLogger.logEvent(LifecycleEventType.APP_STARTED, "Application moved to foreground")
+
+            // Start observing MediaStore for changes
+            ServiceLocator.musicLibrary.startObservingMediaStore(context)
         }
     }
 
@@ -54,6 +57,9 @@ class AppLifecycleObserver(
         super.onStop(owner)
         ProcessLifecycleOwner.get().lifecycleScope.launch {
             eventLogger.logEvent(LifecycleEventType.APP_STOPPED, "Application moved to background")
+
+            // Stop observing MediaStore
+            ServiceLocator.musicLibrary.stopObservingMediaStore()
 
             // Save MusicRepository data to disk when app goes to background
             try {

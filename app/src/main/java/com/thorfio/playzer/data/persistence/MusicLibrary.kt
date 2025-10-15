@@ -1,13 +1,23 @@
 package com.thorfio.playzer.data.persistence
 
 import android.content.Context
+import android.database.ContentObserver
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import com.thorfio.playzer.data.model.Album
 import com.thorfio.playzer.data.model.Artist
 import com.thorfio.playzer.data.model.Track
+import com.thorfio.playzer.data.scanner.MediaStoreAudioClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -39,6 +49,13 @@ class MusicLibrary {
 
     // Track whether we've loaded data from scanning
     private var hasLoadedData = false
+
+    // Coroutine scope for ContentObserver operations
+    private val observerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // ContentObserver for monitoring MediaStore changes
+    private var mediaStoreObserver: ContentObserver? = null
+    private var observerContext: Context? = null
 
     /**
      * Returns true if the library has no tracks
@@ -276,5 +293,184 @@ class MusicLibrary {
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error loading music library", e)
         }
+    }
+
+    /**
+     * Starts observing MediaStore for changes to audio files
+     */
+    fun startObservingMediaStore(context: Context) {
+        if (mediaStoreObserver != null) {
+            Log.d(TAG, "MediaStore observer already registered")
+            return
+        }
+
+        observerContext = context.applicationContext
+
+        mediaStoreObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                Log.d(TAG, "MediaStore change detected: $uri")
+
+                if (uri == null) {
+                    Log.d(TAG, "URI is null, ignoring change")
+                    return
+                }
+
+                // Launch coroutine to handle the change
+                observerScope.launch {
+                    handleMediaStoreChange(context, uri)
+                }
+            }
+        }
+
+        // Register observer for audio media
+        context.contentResolver.registerContentObserver(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            true,
+            mediaStoreObserver!!
+        )
+
+        Log.d(TAG, "MediaStore observer registered")
+    }
+
+    /**
+     * Stops observing MediaStore changes
+     */
+    fun stopObservingMediaStore() {
+        mediaStoreObserver?.let { observer ->
+            observerContext?.contentResolver?.unregisterContentObserver(observer)
+            mediaStoreObserver = null
+            observerContext = null
+            Log.d(TAG, "MediaStore observer unregistered")
+        }
+    }
+
+    /**
+     * Handles MediaStore changes by checking if audio was added or deleted
+     */
+    private suspend fun handleMediaStoreChange(context: Context, uri: Uri) {
+        try {
+            // Extract track ID from URI if possible
+            val trackId = uri.lastPathSegment?.toLongOrNull()
+
+            if (trackId == null) {
+                Log.d(TAG, "Could not extract track ID from URI: $uri")
+                return
+            }
+
+            // Check if track exists in MediaStore
+            val track = MediaStoreAudioClient.getTrackByUri(context, uri)
+
+            if (track != null) {
+                // Track exists - it was added or modified
+                handleTrackAdded(track)
+            } else {
+                // Track doesn't exist in MediaStore - it was deleted
+                handleTrackDeleted(trackId)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling MediaStore change", e)
+        }
+    }
+
+    /**
+     * Handles a track being added to MediaStore
+     */
+    private fun handleTrackAdded(track: Track) {
+        val existingTrack = _tracks.value.find { it.id == track.id }
+
+        if (existingTrack != null) {
+            Log.d(TAG, "Track ${track.title} already exists in library, skipping")
+            return
+        }
+
+        Log.d(TAG, "Adding new track to library: ${track.title}")
+
+        // Add track to library
+        _tracks.value = _tracks.value + track
+
+        // Update or create album
+        val existingAlbum = _albums.value.find { it.id == track.albumId }
+        if (existingAlbum != null) {
+            // Update existing album
+            _albums.value = _albums.value.map { album ->
+                if (album.id == track.albumId) {
+                    album.copy(
+                        trackIds = (album.trackIds + track.id).distinct(),
+                        coverTrackId = album.coverTrackId ?: track.id
+                    )
+                } else {
+                    album
+                }
+            }
+        } else {
+            // Create new album
+            val newAlbum = Album(
+                id = track.albumId,
+                title = track.albumTitle,
+                artistId = track.artistId,
+                artistName = track.artistName,
+                trackIds = listOf(track.id),
+                coverTrackId = track.id
+            )
+            _albums.value = _albums.value + newAlbum
+        }
+
+        // Update or create artist
+        val existingArtist = _artists.value.find { it.id == track.artistId }
+        if (existingArtist != null) {
+            // Update existing artist
+            _artists.value = _artists.value.map { artist ->
+                if (artist.id == track.artistId) {
+                    val newAlbumIds = if (track.albumId !in artist.albumIds) {
+                        artist.albumIds + track.albumId
+                    } else {
+                        artist.albumIds
+                    }
+                    artist.copy(
+                        trackIds = (artist.trackIds + track.id).distinct(),
+                        albumIds = newAlbumIds.distinct()
+                    )
+                } else {
+                    artist
+                }
+            }
+        } else {
+            // Create new artist
+            val newArtist = Artist(
+                id = track.artistId,
+                name = track.artistName,
+                albumIds = listOf(track.albumId),
+                trackIds = listOf(track.id)
+            )
+            _artists.value = _artists.value + newArtist
+        }
+
+        Log.d(TAG, "Track added successfully. Total tracks: ${_tracks.value.size}")
+    }
+
+    /**
+     * Handles a track being deleted from MediaStore
+     */
+    private fun handleTrackDeleted(trackId: Long) {
+        val track = _tracks.value.find { it.id == trackId }
+
+        if (track == null) {
+            Log.d(TAG, "Track ID $trackId not found in library, skipping deletion")
+            return
+        }
+
+        Log.d(TAG, "Removing track from library: ${track.title}")
+
+        // Use existing function to remove track
+        removeTrackFromLibrary(trackId)
+
+        // Clean up empty albums
+        _albums.value = _albums.value.filter { it.trackIds.isNotEmpty() }
+
+        // Clean up empty artists
+        _artists.value = _artists.value.filter { it.trackIds.isNotEmpty() }
+
+        Log.d(TAG, "Track deleted successfully. Total tracks: ${_tracks.value.size}")
     }
 }
