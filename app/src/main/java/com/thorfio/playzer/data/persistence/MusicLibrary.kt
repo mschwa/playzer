@@ -40,6 +40,11 @@ class MusicLibrary {
     // Track whether we've loaded data from scanning
     private var hasLoadedData = false
 
+    /**
+     * Returns true if the library has no tracks
+     */
+    fun isEmpty(): Boolean = _tracks.value.isEmpty()
+
     fun tracksByIds(ids: List<Long>) = _tracks.value.filter { it.id in ids }
 
     fun getTrackById(id: Long) = _tracks.value.find { it.id == id }

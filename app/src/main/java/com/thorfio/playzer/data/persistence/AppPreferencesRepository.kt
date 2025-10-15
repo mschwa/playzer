@@ -123,4 +123,28 @@ class AppPreferencesRepository(private val context: Context) {
             preferences[SELECTED_MAIN_TAB_KEY] = tabIndex
         }
     }
+
+    /**
+     * Get the last scan timestamp synchronously (for quick checks)
+     */
+    suspend fun getLastScanTimestamp(): Long {
+        var timestamp = 0L
+        context.dataStore.data.catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }.collect { preferences ->
+            timestamp = preferences[LAST_SCAN_TIMESTAMP_KEY] ?: 0L
+        }
+        return timestamp
+    }
+
+    /**
+     * Update last scan timestamp to current time
+     */
+    suspend fun updateLastScanTimestampToNow() {
+        updateLastScanTimestamp(System.currentTimeMillis())
+    }
 }
