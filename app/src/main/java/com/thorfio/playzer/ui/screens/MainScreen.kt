@@ -1,5 +1,12 @@
 package com.thorfio.playzer.ui.screens
 
+import android.app.RecoverableSecurityException
+import android.content.ContentUris
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -26,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -64,6 +72,8 @@ fun MainScreen(
     drawerState: DrawerState,
     scope: CoroutineScope
 ) {
+    val context = LocalContext.current
+
     // Services and repositories
     val repo = ServiceLocator.musicLibrary
     val tracks by repo.tracks.collectAsState()
@@ -116,6 +126,20 @@ fun MainScreen(
     // Snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Permission launcher for Android 10+ delete confirmation
+    val deletePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            // User granted permission, deletion was successful
+            deletingTrackId?.let { trackId ->
+                scope.launch {
+                    repo.removeTrackFromLibrary(trackId)
+                }
+            }
+        }
+    }
+
     //region Helper functions
     val updateTab: (MainTab) -> Unit = { tab ->
         if (currentTab != tab) {
@@ -139,6 +163,37 @@ fun MainScreen(
             selectedIds.clear()
             selectedIds.addAll(tracks.map { it.id })
             selectionMode = true
+        }
+    }
+
+    fun deleteAudioTrack(audioTrackId: Long) {
+        // Construct Uri for the specific audio track
+        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, audioTrackId)
+
+        scope.launch {
+            try {
+                // Attempt to delete the audio track
+                val deletedRows = context.contentResolver.delete(uri, null, null)
+                if (deletedRows > 0) {
+                    // Successfully deleted, remove from library
+                    repo.removeTrackFromLibrary(audioTrackId)
+                }
+            } catch (e: SecurityException) {
+                // Permission Handling for Android 10+ (API 29+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val recoverableSecurityException = e as? RecoverableSecurityException
+                    val intentSender = recoverableSecurityException?.userAction?.actionIntent?.intentSender
+
+                    if (intentSender != null) {
+                        // Save the track ID for later processing after permission is granted
+                        deletingTrackId = audioTrackId
+                        // Launch IntentSender to prompt user for permission
+                        deletePermissionLauncher.launch(
+                            IntentSenderRequest.Builder(intentSender).build()
+                        )
+                    }
+                }
+            }
         }
     }
     //endregion
@@ -223,8 +278,7 @@ fun MainScreen(
                             nav.navigate(com.thorfio.playzer.ui.navigation.RouteBuilder.addToPlaylist(listOf(t.id)))
                         },
                         onDelete = { t ->
-                            deletingTrackId = t.id
-                            showDeleteTrackDialog = true
+                            deleteAudioTrack(t.id)
                         },
                         rowHeight = trackRowHeight,
                         sortControls = {
@@ -422,3 +476,4 @@ fun MainScreen(
         )
     }
 }
+
