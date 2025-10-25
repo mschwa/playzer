@@ -105,6 +105,7 @@ fun MainScreen(
     var renamingPlaylistId by remember { mutableStateOf<String?>(null) }
     var renamePlaylistValue by remember { mutableStateOf("") }
     var deletingTrackId by remember { mutableStateOf<Long?>(null) }
+    var deletingTrackUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var deletingPlaylistId by remember { mutableStateOf<String?>(null) }
     var deletingArtistId by remember { mutableStateOf<String?>(null) }
     var deletingAlbumId by remember { mutableStateOf<String?>(null) }
@@ -131,12 +132,30 @@ fun MainScreen(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            // User granted permission, deletion was successful
+            // User granted permission, now retry the deletion
             deletingTrackId?.let { trackId ->
-                scope.launch {
-                    repo.removeTrackFromLibrary(trackId)
+                deletingTrackUri?.let { uri ->
+                    scope.launch {
+                        try {
+                            val deletedRows = context.contentResolver.delete(uri, null, null)
+                            if (deletedRows > 0) {
+                                repo.removeTrackFromLibrary(trackId)
+                                repo.saveToDisk(context)
+                            }
+                        } catch (e: Exception) {
+                            // Handle any remaining errors
+                            e.printStackTrace()
+                        } finally {
+                            deletingTrackId = null
+                            deletingTrackUri = null
+                        }
+                    }
                 }
             }
+        } else {
+            // User denied permission, clean up state
+            deletingTrackId = null
+            deletingTrackUri = null
         }
     }
 
@@ -185,8 +204,9 @@ fun MainScreen(
                     val intentSender = recoverableSecurityException?.userAction?.actionIntent?.intentSender
 
                     if (intentSender != null) {
-                        // Save the track ID for later processing after permission is granted
+                        // Save the track ID and URI for retry after permission is granted
                         deletingTrackId = audioTrackId
+                        deletingTrackUri = uri
                         // Launch IntentSender to prompt user for permission
                         deletePermissionLauncher.launch(
                             IntentSenderRequest.Builder(intentSender).build()
@@ -476,4 +496,3 @@ fun MainScreen(
         )
     }
 }
-
