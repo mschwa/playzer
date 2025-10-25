@@ -53,7 +53,7 @@ fun TrackDeletionDialog(
 @Composable
 fun DeleteArtistDialog(
     showDialog: Boolean,
-    artistId: String?,
+    artistId: Long?,
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
     onDismiss: () -> Unit
@@ -94,7 +94,7 @@ fun DeleteArtistDialog(
 @Composable
 fun DeleteAlbumDialog(
     showDialog: Boolean,
-    albumId: String?,
+    albumId: Long?,
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
     onDismiss: () -> Unit

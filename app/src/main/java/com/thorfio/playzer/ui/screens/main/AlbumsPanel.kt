@@ -45,7 +45,7 @@ fun AlbumsPanel(
     onDelete: (Album) -> Unit
 ) {
     val repo = ServiceLocator.musicLibrary
-    var menuForId by remember { mutableStateOf<String?>(null) }
+    var menuForId by remember { mutableStateOf<Long?>(null) }
     LazyColumn(Modifier.fillMaxSize()) {
         stickyHeader { if (sortControls != null) sortControls() }
         if (albums.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No albums") } }

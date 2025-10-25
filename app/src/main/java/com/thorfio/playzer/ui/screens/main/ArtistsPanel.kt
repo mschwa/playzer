@@ -41,7 +41,7 @@ fun ArtistsPanel(
     onAddToPlaylist: (Artist) -> Unit,
     onDelete: (Artist) -> Unit,
 ) {
-    var menuForId by remember { mutableStateOf<String?>(null) }
+    var menuForId by remember { mutableStateOf<Long?>(null) }
     LazyColumn(Modifier.fillMaxSize()) {
         stickyHeader { if (sortControls != null) sortControls() }
         if (artists.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No artists") } }

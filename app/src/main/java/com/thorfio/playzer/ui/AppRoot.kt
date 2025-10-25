@@ -71,13 +71,13 @@ fun AppRoot(
     ) {
         AppNavHost(
             navController,
-            PaddingValues(0.dp), // No padding from removed Scaffold
+            PaddingValues(0.dp),
             dark,
             dynamic,
             onToggleDark,
             onToggleDynamic,
-            drawerState, // Pass drawer state to be used in MainScreen
-            scope // Pass scope to be used in MainScreen
+            drawerState,
+            scope
         )
     }
 }
@@ -90,15 +90,15 @@ private fun AppNavHost(
     dynamic: Boolean,
     onToggleDark: () -> Unit,
     onToggleDynamic: () -> Unit,
-    drawerState: DrawerState, // Receive drawer state
-    scope: CoroutineScope // Receive coroutine scope
+    drawerState: DrawerState,
+    scope: CoroutineScope
 ) {
     val context = LocalContext.current
 
     NavHost(
         navController = navController,
         startDestination = Routes.MAIN,
-        modifier = Modifier.fillMaxSize().padding(padding) // Added padding so tabs are visible below TopAppBar
+        modifier = Modifier.fillMaxSize().padding(padding)
     ) {
         composable(Routes.MAIN) { MainScreen(navController, drawerState, scope) }
         composable(Routes.SEARCH) { SearchScreen(navController) }
@@ -112,12 +112,22 @@ private fun AppNavHost(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        // Param screens simplified placeholders
-        composable(Routes.PLAYLIST) { backStack -> PlaylistScreen(navController, playlistId = backStack.arguments?.getString("playlistId") ?: "") }
-        composable(Routes.ARTIST) { backStack -> ArtistScreen(navController, artistId = backStack.arguments?.getString("artistId") ?: "") }
-        composable(Routes.ALBUM) { backStack -> AlbumScreen(navController, albumId = backStack.arguments?.getString("albumId") ?: "") }
-        composable(Routes.ADD_TO_PLAYLIST) { backStack -> AddToPlaylistScreen(navController, trackIds = parseIds(backStack.arguments?.getString("trackIds"))) }
-        composable(Routes.CREATE_PLAYLIST) { backStack -> CreatePlaylistScreen(navController, prefilledTrackIds = parseIds(backStack.arguments?.getString("trackIds"))) }
+        // Param screens - updated to parse Long IDs for artist and album
+        composable(Routes.PLAYLIST) { backStack ->
+            PlaylistScreen(navController, playlistId = backStack.arguments?.getString("playlistId") ?: "")
+        }
+        composable(Routes.ARTIST) { backStack ->
+            ArtistScreen(navController, artistId = backStack.arguments?.getString("artistId")?.toLongOrNull() ?: 0L)
+        }
+        composable(Routes.ALBUM) { backStack ->
+            AlbumScreen(navController, albumId = backStack.arguments?.getString("albumId")?.toLongOrNull() ?: 0L)
+        }
+        composable(Routes.ADD_TO_PLAYLIST) { backStack ->
+            AddToPlaylistScreen(navController, trackIds = parseIds(backStack.arguments?.getString("trackIds")))
+        }
+        composable(Routes.CREATE_PLAYLIST) { backStack ->
+            CreatePlaylistScreen(navController, prefilledTrackIds = parseIds(backStack.arguments?.getString("trackIds")))
+        }
     }
 }
 
@@ -127,3 +137,4 @@ private fun parseIds(raw: String?): List<Long> = when {
     raw == "_" -> emptyList()
     else -> raw.split(',').filter { it.isNotBlank() && it != "_" }.mapNotNull { it.toLongOrNull() }
 }
+

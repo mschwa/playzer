@@ -73,7 +73,7 @@ class TrackDeletionService(
         }
     }
 
-    suspend fun deleteAlbum(context: Context, albumId: String?) {
+    suspend fun deleteAlbum(context: Context, albumId: Long?) {
 
         val album = musicLibrary.albums.value.find { it.id == albumId } ?: return
 
@@ -111,7 +111,7 @@ class TrackDeletionService(
         }
     }
 
-    suspend fun deleteArtist(context: Context, artistId: String?) {
+    suspend fun deleteArtist(context: Context, artistId: Long?) {
 
         val artist = musicLibrary.artists.value.find { it.id == artistId } ?: return
 

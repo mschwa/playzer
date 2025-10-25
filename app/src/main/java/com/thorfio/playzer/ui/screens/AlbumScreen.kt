@@ -36,7 +36,7 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlbumScreen(nav: NavController, albumId: String) {
+fun AlbumScreen(nav: NavController, albumId: Long) {
     val repo = ServiceLocator.musicLibrary
     val album = repo.albums.collectAsState().value.firstOrNull { it.id == albumId }
     val tracks: List<Track> = album?.trackIds?.let { repo.tracksByIds(it) } ?: emptyList()
@@ -107,7 +107,7 @@ fun AlbumScreen(nav: NavController, albumId: String) {
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    Color(0x73000000) // Changed from 0x99 (60% opacity) to 0x73 (45% opacity)
+                                    Color(0x73000000)
                                 )
                             )
                         )
@@ -173,7 +173,7 @@ fun AlbumScreen(nav: NavController, albumId: String) {
                     TrackListComponent(
                         track = track,
                         index = index,
-                        isSelected = false, // Not in selection mode for album screen
+                        isSelected = false,
                         isSelectionMode = false,
                         rowHeight = 72.dp,
                         onClick = {
@@ -208,112 +208,91 @@ fun AlbumScreen(nav: NavController, albumId: String) {
                 }
 
                 item {
-                    // Add some space at the bottom for better UX
                     Spacer(Modifier.height(80.dp))
                 }
             }
+        }
 
-            // Delete confirmation dialog
-            if (showDeleteDialog && trackToDelete != null) {
-                AlertDialog(
-                    onDismissRequest = {
-                        showDeleteDialog = false
-                        trackToDelete = null
-                    },
-                    title = { Text("Delete Track") },
-                    text = { Text("Are you sure you want to permanently delete '${trackToDelete?.title}'?") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            trackToDelete?.let { track ->
-                                // Store track for potential restoration
-                                val deletedTrack = track
-
-                                // Delete the track
-                                repo.deleteTracks(listOf(track.id))
-
-                                // Show snackbar with undo option
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Track deleted",
-                                        actionLabel = "UNDO",
-                                        duration = SnackbarDuration.Short
-                                    )
-
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        // Restore the track if user clicked UNDO
-                                        repo.restoreTracks(listOf(deletedTrack))
-                                    }
+        // Delete confirmation dialog
+        if (showDeleteDialog && trackToDelete != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    showDeleteDialog = false
+                    trackToDelete = null
+                },
+                title = { Text("Delete Track") },
+                text = { Text("Are you sure you want to permanently delete '${trackToDelete?.title}'?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        trackToDelete?.let { track ->
+                            val deletedTrack = track
+                            repo.deleteTracks(listOf(track.id))
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Track deleted",
+                                    actionLabel = "UNDO",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    repo.restoreTracks(listOf(deletedTrack))
                                 }
                             }
-                            showDeleteDialog = false
-                            trackToDelete = null
-                        }) {
-                            Text("Delete")
                         }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            showDeleteDialog = false
-                            trackToDelete = null
-                        }) {
-                            Text("Cancel")
-                        }
+                        showDeleteDialog = false
+                        trackToDelete = null
+                    }) {
+                        Text("Delete")
                     }
-                )
-            }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showDeleteDialog = false
+                        trackToDelete = null
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
 private fun AlbumHeader(albumTitle: String?, artistName: String?, trackCount: Int) {
-    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Album Icon", tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    albumTitle ?: "--",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = MaterialTheme.typography.titleMedium.fontSize * 0.835f,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(artistName ?: "--", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$trackCount tracks", style = MaterialTheme.typography.labelSmall)
-        }
+    Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp)) {
+        Text(
+            text = albumTitle ?: "Unknown Album",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = artistName ?: "Unknown Artist",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.7f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = "$trackCount ${if (trackCount == 1) "track" else "tracks"}",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.5f)
+        )
     }
 }
 
-// Helper function to extract album art from a track
-private suspend fun extractAlbumArtFromTrack(context: android.content.Context, track: Track): ImageBitmap? {
-    return withContext(Dispatchers.IO) {
-        try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(context, android.net.Uri.parse(track.fileUri))
-            val bytes = retriever.embeddedPicture
-            retriever.release()
-
-            if (bytes != null) {
-                // Decode at a reasonable size for header background
-                val targetSize = 400
-
-                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-
-                val (w, h) = opts.outWidth to opts.outHeight
-                if (w <= 0 || h <= 0) return@withContext null
-
-                var sample = 1
-                while ((w / sample) > targetSize * 2 || (h / sample) > targetSize * 2) sample *= 2
-
-                val loadOpts = BitmapFactory.Options().apply { inSampleSize = sample }
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, loadOpts)
-                bitmap?.asImageBitmap()
-            } else null
-        } catch (e: Exception) {
-            null
+private suspend fun extractAlbumArtFromTrack(context: android.content.Context, track: Track): ImageBitmap? = withContext(Dispatchers.IO) {
+    try {
+        val retriever = MediaMetadataRetriever()
+        retriever.setDataSource(context, android.net.Uri.parse(track.fileUri))
+        val art = retriever.embeddedPicture
+        retriever.release()
+        art?.let {
+            BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap()
         }
+    } catch (e: Exception) {
+        null
     }
 }
+

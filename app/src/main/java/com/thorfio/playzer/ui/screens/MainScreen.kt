@@ -107,8 +107,8 @@ fun MainScreen(
     var deletingTrackId by remember { mutableStateOf<Long?>(null) }
     var deletingTrackUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var deletingPlaylistId by remember { mutableStateOf<String?>(null) }
-    var deletingArtistId by remember { mutableStateOf<String?>(null) }
-    var deletingAlbumId by remember { mutableStateOf<String?>(null) }
+    var deletingArtistId by remember { mutableStateOf<Long?>(null) }
+    var deletingAlbumId by remember { mutableStateOf<Long?>(null) }
 
     // Control showing of dialogs
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }

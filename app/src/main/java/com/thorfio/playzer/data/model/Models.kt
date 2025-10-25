@@ -8,9 +8,9 @@ import java.util.UUID
 data class Track(
     val id: Long = 0,
     val title: String,
-    val artistId: String,
+    val artistId: Long,
     val artistName: String,
-    val albumId: String,
+    val albumId: Long,
     val albumTitle: String,
     val durationMs: Long,
     val fileUri: String,
@@ -20,9 +20,9 @@ data class Track(
 
 @Serializable
 data class Album(
-    val id: String = UUID.randomUUID().toString(),
+    val id: Long,
     val title: String,
-    val artistId: String,
+    val artistId: Long,
     val artistName: String,
     val trackIds: List<Long>,
     val coverTrackId: Long?
@@ -30,9 +30,9 @@ data class Album(
 
 @Serializable
 data class Artist(
-    val id: String = UUID.randomUUID().toString(),
+    val id: Long,
     val name: String,
-    val albumIds: List<String>,
+    val albumIds: List<Long>,
     val trackIds: List<Long>
 )
 

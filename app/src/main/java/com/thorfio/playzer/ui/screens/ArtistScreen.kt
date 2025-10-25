@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArtistScreen(nav: NavController, artistId: String) {
+fun ArtistScreen(nav: NavController, artistId: Long) {
     val repo = ServiceLocator.musicLibrary
     val artist = repo.artists.collectAsState().value.firstOrNull { it.id == artistId }
     val albums = repo.albums.collectAsState().value.filter { it.artistId == artistId }
@@ -204,68 +204,49 @@ fun ArtistScreen(nav: NavController, artistId: String) {
 }
 
 @Composable
-private fun ArtistAlbumsRow(
-    albums: List<com.thorfio.playzer.data.model.Album>,
-    onAlbumClick: (com.thorfio.playzer.data.model.Album) -> Unit = {}
-) {
+private fun ArtistAlbumsRow(albums: List<com.thorfio.playzer.data.model.Album>, onAlbumClick: (com.thorfio.playzer.data.model.Album) -> Unit) {
     if (albums.isEmpty()) return
 
     Row(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(8.dp)
     ) {
         albums.forEach { album ->
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                tonalElevation = 2.dp,
+            Column(
                 modifier = Modifier
-                    .size(120.dp) // Changed to square shape (120dp x 120dp)
-                    .clickable { onAlbumClick(album) }
+                    .width(120.dp)
+                    .padding(4.dp)
+                    .clickable { onAlbumClick(album) },
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Album cover
                 Box(
-                    Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .size(120.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    // Display album cover art
-                    TrackAlbumArt(
-                        track = null,
-                        album = album,
-                        size = 120.dp, // Match the container size
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    // Gradient overlay at the bottom to make text readable
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp) // Reduced height for the gradient overlay
-                            .align(Alignment.BottomCenter)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.7f)
-                                    )
-                                )
-                            )
-                    )
-
-                    Text(
-                        album.title,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                    )
+                    album.coverTrackId?.let { coverTrackId ->
+                        val track = ServiceLocator.musicLibrary.getTrackById(coverTrackId)
+                        track?.let {
+                            TrackAlbumArt(track = it, modifier = Modifier.fillMaxSize())
+                        }
+                    }
                 }
+
+                Spacer(Modifier.height(4.dp))
+
+                // Album title
+                Text(
+                    text = album.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
 }
+
