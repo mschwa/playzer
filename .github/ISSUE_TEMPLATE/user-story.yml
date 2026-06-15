@@ -1,0 +1,170 @@
+name: User Story
+about: Create a Shared Services user story aligned with Azure DevOps work item fields
+title: "[User Story]: "
+labels:
+  - user-story
+  - shared-services
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to capture a User Story in GitHub with details that map cleanly to the Azure DevOps Shared Services project.
+
+  - type: input
+    id: as_a
+    attributes:
+      label: As a...
+      description: Who is the user or persona?
+      placeholder: As a platform administrator
+    validations:
+      required: true
+
+  - type: input
+    id: i_want
+    attributes:
+      label: I want...
+      description: What capability is needed?
+      placeholder: I want to assign users to entitlements in bulk
+    validations:
+      required: true
+
+  - type: input
+    id: so_that
+    attributes:
+      label: So that...
+      description: What is the business/user outcome?
+      placeholder: So that license migration can be completed faster and with fewer manual errors
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Add context, constraints, and implementation notes.
+      placeholder: Describe the problem, context, and expected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Use Given/When/Then or bullet points.
+      placeholder: |
+        - Given ...
+          When ...
+          Then ...
+        - Given ...
+          When ...
+          Then ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: Define what this story does not include.
+      placeholder: List explicit non-goals.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Select the initial priority.
+      options:
+        - 1 - Critical
+        - 2 - High
+        - 3 - Medium
+        - 4 - Low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: story_points
+    attributes:
+      label: Story Points
+      description: Initial estimate.
+      options:
+        - 1
+        - 2
+        - 3
+        - 5
+        - 8
+        - 13
+    validations:
+      required: false
+
+  - type: input
+    id: area_path
+    attributes:
+      label: Azure DevOps Area Path
+      description: Shared Services area path for this story.
+      placeholder: Shared Services\\Services\\EMS License-Entitlement Registration
+    validations:
+      required: false
+
+  - type: input
+    id: iteration_path
+    attributes:
+      label: Azure DevOps Iteration Path
+      description: Sprint or iteration path.
+      placeholder: Shared Services\\Sprint 2026.06
+    validations:
+      required: false
+
+  - type: input
+    id: parent_feature
+    attributes:
+      label: Parent Feature (ADO ID)
+      description: Link this story to its parent feature work item id.
+      placeholder: "686516"
+    validations:
+      required: false
+
+  - type: input
+    id: ado_work_item_link
+    attributes:
+      label: Azure DevOps Work Item Link
+      description: Paste the ADO work item URL once created.
+      placeholder: https://dev.azure.com/<org>/<project>/_workitems/edit/<id>
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies / Blockers
+      description: List related work items, services, or teams.
+      placeholder: |
+        - Depends on ...
+        - Blocked by ...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: definition_of_done
+    attributes:
+      label: Definition of Done
+      description: Check all that apply before moving to releasable.
+      options:
+        - label: Code complete and peer reviewed
+        - label: Unit/integration tests added or updated
+        - label: Acceptance criteria validated
+        - label: Documentation updated
+        - label: Feature flags/configuration reviewed
+        - label: Monitoring/logging considerations addressed
+
+  - type: textarea
+    id: release_notes
+    attributes:
+      label: Release Notes
+      description: Include user-facing or operational release notes text.
+      placeholder: Brief release note text.
+    validations:
+      required: false
