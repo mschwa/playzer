@@ -1,5 +1,4 @@
 name: User Story
-about: Create a Shared Services user story aligned with Azure DevOps work item fields
 title: "[User Story]: "
 labels:
   - user-story
